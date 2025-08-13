@@ -160,8 +160,11 @@ def setup_node_bundling
   # Update the application layout to use the bundled assets instead of importmaps.
   layout_path = "app/views/layouts/application.html.erb"
   gsub_file layout_path, /<%= stylesheet_link_tag .*%>/, '<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>'
-  gsub_file layout_path, /<%= javascript_importmap_tags .*%>.*$/, '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
-  gsub_file layout_path, /<%= javascript_include_tag .*%>/, '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
+
+  # Ensure the JavaScript bundle is included correctly.
+  insert_into_file layout_path,
+                   "    <%= javascript_include_tag \"application\", \"data-turbo-track\": \"reload\", defer: true %>\n",
+                   before: /\s*<\/head>/
 end
 
 # 5. Configure Propshaft and Rails generators.
