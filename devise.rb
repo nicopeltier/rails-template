@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 # =============================================================================
-# Rails Template — devise.rb
+# Rails Template — devise.rb (NPM‑only)
 # Goal: generate a Rails 8.0.2 app ready to go with:
 #  - Ruby 3.4.5
 #  - Propshaft 1.2.1 (no Sprockets) using the “manifest” mode
-#  - jsbundling-rails + cssbundling-rails with NPM
+#  - jsbundling-rails + cssbundling-rails with **NPM only**
 #  - Bootstrap + Popper via NPM (no bootstrap gem)
 #  - Devise installed and configured
 #  - Heroku-friendly (Node + Ruby precompilation)
@@ -45,8 +45,8 @@ file ".ruby-version", RUBY_TARGET
 #    - devise for authentication
 #    - jsbundling-rails / cssbundling-rails to compile via NPM
 #    - remove importmap-rails (useless when using jsbundling)
-#    NOTE: We now **replace** any existing `gem "propshaft"` line instead of
-#    adding a new one, to avoid Bundler errors for duplicates.
+#    NOTE: We **replace** any existing `gem "propshaft"` line instead of adding
+#    a new one, to avoid Bundler errors for duplicates.
 # -----------------------------------------------------------------------------#
 # Ensure a `ruby "x.y.z"` directive exists; replace/insert as needed.
 if File.read("Gemfile") =~ /^ruby /
@@ -58,7 +58,7 @@ end
 # Lock the Rails version.
 gsub_file "Gemfile", /^gem ["']rails["'].*$/, %(gem "rails", "#{RAILS_TARGET}")
 
-# Remove Sprockets & importmap if present (we want to avoid conflicts).
+# Remove Sprockets & importmap if present (avoid conflicts).
 gsub_file "Gemfile", /^gem ["']sprockets-rails["'].*\n/, ""
 gsub_file "Gemfile", /^gem ["']importmap-rails["'].*\n/, ""
 
@@ -66,25 +66,27 @@ gsub_file "Gemfile", /^gem ["']importmap-rails["'].*\n/, ""
 if File.read("Gemfile") =~ /^gem ["']propshaft["']/
   gsub_file "Gemfile", /^gem ["']propshaft["'].*$/, %(gem "propshaft", "#{PROPSHAFT_VERSION}")
 else
-  append_to_file "Gemfile", %(\n  gem "propshaft", "#{PROPSHAFT_VERSION}"\n)
+  append_to_file "Gemfile", %(
+  gem "propshaft", "#{PROPSHAFT_VERSION}"
+)
 end
 
-# Add our key gems (respecting Rails 8 default Gemfile structure).  
+# Add our key gems (respecting Rails 8 default Gemfile structure).
 # (We deliberately DO NOT add propshaft here anymore to avoid duplicates.)
 append_to_file "Gemfile", <<~RUBY
 
   # --- Authentication ---
-  gem "devise"                            # Battle-tested authentication gem (generates User, controllers, views, etc.)
+  gem "devise"
 
   # --- Bundling via Node/NPM ---
-  gem "jsbundling-rails"                  # Hooks JS bundlers (esbuild/rollup/webpack) into Rails precompile
-  gem "cssbundling-rails"                 # Same for CSS (Sass/PostCSS/Bootstrap/Bulma/Tailwind via Node)
+  gem "jsbundling-rails"
+  gem "cssbundling-rails"
 RUBY
 
 # Notes:
 # - pg, puma, bootsnap… are already present in the default Rails 8 Gemfile.
-# - Do NOT add the 'bootstrap' gem. We’ll install Bootstrap from NPM.
-# - Do NOT add 'sass-rails' / 'sassc-rails' (Sprockets-era) to avoid conflicts.
+# - No 'bootstrap' gem. We’ll install Bootstrap from NPM.
+# - No 'sass-rails' / 'sassc-rails' (Sprockets-era) to avoid conflicts.
 
 # -----------------------------------------------------------------------------#
 # 4) Bundle install — install gems above.
@@ -92,64 +94,76 @@ RUBY
 run "bundle install"
 
 # -----------------------------------------------------------------------------#
-# 5) Node / NPM — enforce NPM (not yarn) and install JS/CSS tooling.
+# 5) Node / NPM — enforce **NPM only** and install JS/CSS tooling.
 #    Explanation:
 #      - jsbundling-rails installs a bundler (we choose esbuild for simplicity).
 #      - cssbundling-rails installs a preset (we choose bootstrap).
 #      - install bootstrap + @popperjs/core via NPM (no bootstrap gem).
 # -----------------------------------------------------------------------------#
-# Avoid Yarn being chosen by default if it exists on the machine.
-run "rm -f yarn.lock"
+# Ensure no leftover lock/config from other package managers.
+run "rm -f yarn.lock .yarnrc .yarnrc.yml"
+run "rm -rf .yarn .pnp.cjs .pnp.loader.mjs"
 
 # Initialize package.json if absent (Rails might not have created it).
 run "npm init -y" unless File.exist?("package.json")
 
 # Install and configure the JS bundler (esbuild).
 run "bin/rails javascript:install:esbuild"
+# Enforce NPM-only after installer runs (if it created artifacts).
+run "rm -f yarn.lock .yarnrc .yarnrc.yml"
+run "rm -rf .yarn .pnp.cjs .pnp.loader.mjs"
 
 # Install and configure the CSS bundler with Bootstrap (via Sass CLI).
 run "bin/rails css:install:bootstrap"
+# Enforce NPM-only after installer runs (if it created artifacts).
+run "rm -f yarn.lock .yarnrc .yarnrc.yml"
+run "rm -rf .yarn .pnp.cjs .pnp.loader.mjs"
 
 # Add Bootstrap & Popper on the JS side for interactive components (dropdowns, modals…)
 run "npm install bootstrap @popperjs/core"
+
+# Force package manager to NPM explicitly in package.json
+run %(npm pkg set packageManager="npm@latest")
 
 # Adjust NPM scripts to match the requirement: `npm run build` and `npm run build:css`
 # - build     : bundle JS → app/assets/builds (then digested by Propshaft)
 # - build:css : compile Bootstrap SCSS → app/assets/builds/application.css
 run %(npm pkg set scripts.build="esbuild app/javascript/*.* --bundle --sourcemap --outdir=app/assets/builds --public-path=/assets")
-# The Bootstrap preset already created build:css; we overwrite to ensure the exact format and paths we want:
+# The Bootstrap preset already created build:css; ensure exact format and paths we want:
 run %(npm pkg set scripts."build:css"="sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map")
+
+# If a dev runner script references another package manager, switch to NPM.
+if File.exist?("bin/dev")
+  gsub_file "bin/dev", /yarn build:css --watch/, "npm run build:css -- --watch"
+  gsub_file "bin/dev", /yarn build --watch/, "npm run build -- --watch"
+  gsub_file "bin/dev", /yarn build:css/, "npm run build:css"
+  gsub_file "bin/dev", /yarn build/, "npm run build"
+end
+
+# Make sure dependencies are locked with NPM (creates/updates package-lock.json)
+run "npm install"
 
 # -----------------------------------------------------------------------------#
 # 6) JS entrypoint — load Bootstrap JS (for tooltips/modals, etc.)
-#    Explanation: import "bootstrap" activates Bootstrap’s JS (which depends on
-#    Popper for some components).
 # -----------------------------------------------------------------------------#
 application_js_path = "app/javascript/application.js"
-append_to_file application_js_path, %(\n// Enable Bootstrap JS components\nimport "bootstrap"\n)
+append_to_file application_js_path, %(
+// Enable Bootstrap JS components
+import "bootstrap"
+)
 
 # -----------------------------------------------------------------------------#
 # 7) Propshaft — “manifest-only” behavior in production.
-#    Key idea: in development, Propshaft serves assets via the load path.
-#              in production, after `assets:precompile`, it relies on the MANIFEST
-#              (public/assets/.manifest.json) — that’s what you want.
-#    Actions:
-#     - Add app/assets/builds to the asset paths (where js/css bundles are emitted)
-#     - Exclude source folders to avoid duplicates in production
-#       (we don’t want source SCSS/JS to be copied as-is).
+#    In development, Propshaft serves assets via the load path; in production
+#    it uses the manifest generated by `assets:precompile`.
 # -----------------------------------------------------------------------------#
 initializer "assets.rb", <<~RUBY
   # Be sure to restart your server when you modify this file.
 
-  # Asset version (handy to invalidate caches if needed)
   Rails.application.config.assets.version = "1.0"
-
-  # Where JS/CSS compiled by bundlers are emitted (then digested by Propshaft)
   Rails.application.config.assets.paths << Rails.root.join("app/assets/builds")
 
-  # Exclude compilation sources from the load path to avoid duplicates in production
-  # Explanation: our SCSS (source) becomes a single final CSS file in builds/.
-  # Same for JS. We ask Propshaft to ignore the source folders.
+  # Exclude source folders from the load path to avoid duplicates in production
   Rails.application.config.assets.excluded_paths << Rails.root.join("app/javascript")
   Rails.application.config.assets.excluded_paths << Rails.root.join("app/assets/stylesheets")
 RUBY
@@ -160,18 +174,14 @@ gsub_file "config/environments/production.rb",
           "config.assets.compile = false\n"
 append_to_file "config/environments/production.rb", <<~RUBY
 
-  # Propshaft in manifest mode (default behavior after precompile):
-  # - Files are served via the .manifest.json mapping
-  # - Ensures fingerprinted URLs and long cache
-  # Heroku: the Ruby build will run `assets:precompile`, which triggers `npm run build`
-  # and `npm run build:css` thanks to the *bundling-rails gems.
+  # Propshaft in manifest mode (default after precompile):
+  # - Files served via the .manifest.json mapping
+  # - Fingerprinted URLs and long cache
+  # On Heroku, `assets:precompile` triggers `npm run build` and `npm run build:css`.
 RUBY
 
 # -----------------------------------------------------------------------------#
 # 8) Layout — ensure helpers reference Propshaft bundles.
-#    - stylesheet_link_tag "application"         → uses app/assets/builds/application.css
-#    - javascript_include_tag "application"      → uses app/assets/builds/application.js
-#    - data-turbo-track="reload"                 → auto-reload when assets change
 # -----------------------------------------------------------------------------#
 gsub_file "app/views/layouts/application.html.erb",
           /<%= stylesheet_link_tag .* %>/,
@@ -184,22 +194,21 @@ gsub_file "app/views/layouts/application.html.erb",
 layout_path = "app/views/layouts/application.html.erb"
 if File.exist?(layout_path) && !File.read(layout_path).include?("stylesheet_link_tag")
   inject_into_file layout_path,
-    %(\n    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>\n),
+    %(
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+),
     after: /<head>.*\n/
 end
 if File.exist?(layout_path) && !File.read(layout_path).include?("javascript_include_tag")
   inject_into_file layout_path,
-    %(\n    <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>\n),
+    %(
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+),
     before: %r{</head>}
 end
 
 # -----------------------------------------------------------------------------#
 # 9) Devise — install + User model + URL config per environment.
-#    Explanations:
-#      - devise:install creates config files and needed routes.
-#      - devise User gives you a ready-to-use user model.
-#      - default_url_options is necessary to generate full links
-#        (e.g., confirmation emails) in dev/test/prod.
 # -----------------------------------------------------------------------------#
 generate "devise:install"
 generate "devise", "User"
@@ -218,7 +227,6 @@ RUBY
 
 # -----------------------------------------------------------------------------#
 # 10) Flashes — a simple partial + include in the layout.
-#      (Bootstrap handles styles .alert .alert-info/success/warning/danger)
 # -----------------------------------------------------------------------------#
 file "app/views/shared/_flashes.html.erb", <<~ERB
   <% if notice %>
@@ -257,7 +265,6 @@ ERB
 
 # -----------------------------------------------------------------------------#
 # 12) Procfile (Heroku) — Puma in production.
-#     Why: Heroku detects Rails, but declaring Puma explicitly is healthy.
 # -----------------------------------------------------------------------------#
 file "Procfile", <<~YAML
   web: bundle exec puma -C config/puma.rb
@@ -296,17 +303,14 @@ run "npm run build:css"
 after_bundle do
   git :init
   git add: "."
-  git commit: %q(-m "Initial commit: Rails 8.0.2 + Propshaft 1.2.1 + js/css bundling (NPM) + Bootstrap + Devise")
+  git commit: %q(-m "Initial commit: Rails 8.0.2 + Propshaft 1.2.1 + js/css bundling (NPM only) + Bootstrap + Devise")
 end
 
 # =============================================================================
-# Educational notes (reminder):
+# Notes:
 # - Propshaft serves assets: in dev from the load paths, in prod via
 #   a manifest (.manifest.json) generated by `rails assets:precompile`.
-# - jsbundling-rails/cssbundling-rails automatically hook `npm run build`
-#   and `npm run build:css` into `assets:precompile`. On Heroku, the Ruby
-#   build will execute these scripts if the Node buildpack comes before the
-#   Ruby buildpack.
-# - We do NOT use the bootstrap gem (avoid Sprockets conflicts). Everything goes
-#   through NPM → propshaft → helpers (`stylesheet_link_tag`/`javascript_include_tag`).
+# - jsbundling-rails/cssbundling-rails hook `npm run build` and `npm run build:css`
+#   into `assets:precompile`. On Heroku, the Ruby build will execute these scripts.
+# - No bootstrap gem. Everything goes through NPM → Propshaft → helpers.
 # =============================================================================
