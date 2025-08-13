@@ -109,10 +109,9 @@ def setup_devise
             /config\.mailer_sender = .*/,
             'config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"'
 
-  # Configure Devise to use DELETE for sign-out, which is the secure default.
   gsub_file "config/initializers/devise.rb",
-            /#?\s*config\.sign_out_via = .*/,
-            "  config.sign_out_via = :delete"
+            /# Devise\.setup do |config|/,
+            "Devise.setup do |config|\n  config.sign_out_via = :delete"
 
   generate "devise", "User" unless File.exist?("app/models/user.rb")
 
@@ -191,11 +190,7 @@ def setup_ui
 
   run "curl -L https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/_navbar_np.html.erb > app/views/shared/_navbar.html.erb"
 
-  # Ensure the logout link sends a DELETE request using Turbo, which is required
-  # when Devise's sign_out_via is set to :delete.
-  gsub_file "app/views/shared/_navbar.html.erb",
-            'href="/users/sign_out"',
-            'href="<%= destroy_user_session_path %>" data-turbo-method="delete"'
+
 
 
 
