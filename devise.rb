@@ -109,9 +109,10 @@ def setup_devise
             /config\.mailer_sender = .*/,
             'config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"'
 
+  # Configure Devise to use DELETE for sign-out, which is the secure default.
   gsub_file "config/initializers/devise.rb",
-            /# Devise\.setup do |config|/,
-            "Devise.setup do |config|\n  config.sign_out_via = :delete"
+            /#\s*config\.sign_out_via = :delete/,
+            "  config.sign_out_via = :delete"
 
   generate "devise", "User" unless File.exist?("app/models/user.rb")
 
