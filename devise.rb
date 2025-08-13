@@ -83,9 +83,9 @@ def setup_node_bundling
 
   # Define npm scripts for building JS and CSS without running them.
   # The final build will be triggered once at the end of the template.
-  run %(npm pkg set scripts.build="esbuild app/javascript/*.* --bundle --sourcemap --outdir=app/assets/builds --public-path=/assets")
-  run %(npm pkg set scripts.build:css:compile="sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules")
-  run %(npm pkg set scripts.build:css:prefix="postcss ./app/assets/builds/application.css --use=autoprefixer --output=./app/assets/builds/application.css")
+  run %(npm pkg set scripts.build="./node_modules/.bin/esbuild app/javascript/*.* --bundle --sourcemap --outdir=app/assets/builds --public-path=/assets")
+  run %(npm pkg set scripts.build:css:compile="./node_modules/.bin/sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules")
+  run %(npm pkg set scripts.build:css:prefix="./node_modules/.bin/postcss ./app/assets/builds/application.css --use=autoprefixer --output=./app/assets/builds/application.css")
   run %(npm pkg set scripts.build:css="npm run build:css:compile && npm run build:css:prefix")
 
   # Update the application layout to use the bundled assets instead of importmaps.
