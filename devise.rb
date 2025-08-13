@@ -76,16 +76,9 @@ def setup_node_bundling
   # Initialize npm and install base dependencies
   run "rm -f yarn.lock" # Ensure we don't mix package managers
   run "npm init -y" unless File.exist?("package.json")
-  # Force npm by removing yarn.lock before each installer is run.
-  run "rm -f yarn.lock"
   run "bin/rails javascript:install:esbuild"
-  run "rm -f yarn.lock"
   run "bin/rails css:install:bootstrap"
   run "npm install bootstrap @popperjs/core"
-
-  # The cssbundling-rails installer hardcodes 'yarn' into the package.json scripts.
-  # We must manually replace them with 'npm' to enforce consistency.
-  gsub_file "package.json", /"yarn(?!.lock)/, '"npm run'
 
   # Define npm scripts for building JS and CSS without running them.
   # The final build will be triggered once at the end of the template.
