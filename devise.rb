@@ -78,8 +78,9 @@ def setup_node_bundling
   run "npm init -y" unless File.exist?("package.json")
   run "bin/rails javascript:install:esbuild"
   run "bin/rails css:install:bootstrap"
-  # Explicitly install esbuild along with other dependencies to ensure it's available.
-  run "npm install esbuild bootstrap @popperjs/core"
+  # Explicitly install ALL node dependencies to bypass the faulty generators.
+  # This ensures esbuild, sass, and postcss are available in node_modules/.bin.
+  run "npm install esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core"
 
   # Define npm scripts for building JS and CSS without running them.
   # The final build will be triggered once at the end of the template.
