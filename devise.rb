@@ -312,6 +312,7 @@ append_to_file ".gitignore", <<~TXT
 TXT
 
 file "Procfile", "web: bundle exec puma -C config/puma.rb"
+run "mkdir -p app/assets/builds"
 run "touch app/assets/builds/.keep"
 
 # Force a clean installation of all Node dependencies before building.
