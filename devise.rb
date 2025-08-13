@@ -45,6 +45,8 @@ file ".ruby-version", RUBY_TARGET
 #    - devise for authentication
 #    - jsbundling-rails / cssbundling-rails to compile via NPM
 #    - remove importmap-rails (useless when using jsbundling)
+#    NOTE: We now **replace** any existing `gem "propshaft"` line instead of
+#    adding a new one, to avoid Bundler errors for duplicates.
 # -----------------------------------------------------------------------------#
 # Ensure a `ruby "x.y.z"` directive exists; replace/insert as needed.
 if File.read("Gemfile") =~ /^ruby /
@@ -60,14 +62,19 @@ gsub_file "Gemfile", /^gem ["']rails["'].*$/, %(gem "rails", "#{RAILS_TARGET}")
 gsub_file "Gemfile", /^gem ["']sprockets-rails["'].*\n/, ""
 gsub_file "Gemfile", /^gem ["']importmap-rails["'].*\n/, ""
 
-# Add our key gems (respecting Rails 8 default Gemfile structure).
+# Ensure Propshaft is present exactly once and pinned to PROPSHAFT_VERSION.
+if File.read("Gemfile") =~ /^gem ["']propshaft["']/
+  gsub_file "Gemfile", /^gem ["']propshaft["'].*$/, %(gem "propshaft", "#{PROPSHAFT_VERSION}")
+else
+  append_to_file "Gemfile", %(\n  gem "propshaft", "#{PROPSHAFT_VERSION}"\n)
+end
+
+# Add our key gems (respecting Rails 8 default Gemfile structure).  
+# (We deliberately DO NOT add propshaft here anymore to avoid duplicates.)
 append_to_file "Gemfile", <<~RUBY
 
   # --- Authentication ---
   gem "devise"                            # Battle-tested authentication gem (generates User, controllers, views, etc.)
-
-  # --- Modern asset pipeline (no Sprockets) ---
-  gem "propshaft", "#{PROPSHAFT_VERSION}" # Rails 8 asset pipeline (digest + manifest). Version pinned.
 
   # --- Bundling via Node/NPM ---
   gem "jsbundling-rails"                  # Hooks JS bundlers (esbuild/rollup/webpack) into Rails precompile
