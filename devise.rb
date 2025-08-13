@@ -84,7 +84,7 @@ def setup_node_bundling
   # 1. Install all required Node.js dependencies in one go.
   # The `--save-dev` flag ensures they are added to package.json.
   # 1. Install all required Node.js dependencies in one go, including Turbo and Stimulus.
-  run "npm install --save-dev esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core bootstrap-icons @hotwired/turbo-rails @hotwired/stimulus"
+  run "npm install --save-dev esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core bootstrap-icons @hotwired/turbo-rails @hotwired/stimulus @hotwired/stimulus-loading"
 
   # 2. Create the PostCSS configuration file.
   file "postcss.config.js", <<~JS
