@@ -168,7 +168,7 @@ def setup_ui
     <% end %>
   ERB
 
-  run "curl -L https://raw.githubusercontent.com/lewagon/awesome-navbars/master/templates/_navbar_wagon.html.erb > app/views/shared/_navbar.html.erb"
+  run "curl -L https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/_navbar_np.html.erb > app/views/shared/_navbar.html.erb"
 
   layout_path = "app/views/layouts/application.html.erb"
   gsub_file layout_path, /<%= stylesheet_link_tag .*%>/, '<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>'
