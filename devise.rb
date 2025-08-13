@@ -34,9 +34,10 @@ file ".ruby-version", RUBY_VERSION
 
 # 3. Configure Gemfile for Rails 8, Propshaft, and Bundling.
 def setup_gemfile
-  # Force npm as the JavaScript installer and remove yarn.lock if it exists.
+  # Force npm as the JavaScript installer by creating a package.json file.
+  # This makes the bundler installers default to npm instead of yarn.
+  file "package.json", "{}"
   run "rm -f yarn.lock"
-  append_to_file ".railsrc", "--javascript=npm\n"
 
   gsub_file "Gemfile", /^ruby .*/, %(ruby "#{RUBY_VERSION}")
   gsub_file "Gemfile", /^gem "rails", .*/, %(gem "rails", "#{RAILS_VERSION}")
