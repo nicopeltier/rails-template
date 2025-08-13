@@ -112,7 +112,8 @@ def setup_node_bundling
     @import 'bootstrap-icons/font/bootstrap-icons';
   SCSS
 
-  # 5. Create the main javascript entrypoint.
+  # 5. Create the main javascript entrypoint, ensuring the directory exists first.
+  run "mkdir -p app/javascript"
   file "app/javascript/application.js", <<~JS
     // Entry point for the build script in package.json
     import * as bootstrap from "bootstrap"
