@@ -213,26 +213,15 @@ end
 #      - If a Devise migration exists, harden it with `if_not_exists` to avoid
 #        crashes when the `users` table/index already exist.
 # -----------------------------------------------------------------------------#
-# 9.1 Install Devise (once)
-unless File.exist?("config/initializers/devise.rb")
   generate "devise:install"
-end
-
-# 9.2 Generate User model with Devise (if needed)
-devise_migration = Dir.glob("db/migrate/*_devise_create_users.rb").first
-unless File.exist?("app/models/user.rb") || devise_migration
   generate "devise", "User"
-  devise_migration = Dir.glob("db/migrate/*_devise_create_users.rb").first
-end
+  rails_command "db:migrate"
+  generate("devise:views")
+  
 
-# 9.3 Make Devise migration tolerant to existing DB objects
-if devise_migration
-  gsub_file devise_migration, /create_table :users do/, 'create_table :users, if_not_exists: true do'
-  gsub_file devise_migration, /add_index :users, :email, unique: true\b/, 'add_index :users, :email, unique: true, if_not_exists: true'
-  gsub_file devise_migration, /add_index :users, :reset_password_token, unique: true\b/, 'add_index :users, :reset_password_token, unique: true, if_not_exists: true'
-end
 
-# 9.4 Mailer hosts for URL generation
+
+
 environment 'config.action_mailer.default_url_options = { host: "localhost", port: 3000 }', env: "development"
 environment 'config.action_mailer.default_url_options = { host: "www.example.com" }', env: "test"
 
