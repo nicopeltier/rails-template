@@ -38,6 +38,8 @@ file ".railsrc", "--skip-spring\n--javascript=npm\n"
 
 # 4. Configure Gemfile for Rails 8, Propshaft, and Bundling.
 def setup_gemfile
+  # Drop the database to ensure a clean slate, ignoring errors if it doesn't exist.
+  run "rails db:drop || true"
   # Force npm as the JavaScript installer by creating a package.json file.
   # This makes the bundler installers default to npm instead of yarn.
   file "package.json", "{}"
@@ -71,13 +73,19 @@ end
 
 # 4. Set up Node.js for asset bundling.
 def setup_node_bundling
-  run "rm -f yarn.lock"
+  # Initialize npm and install base dependencies
+  run "rm -f yarn.lock" # Ensure we don't mix package managers
   run "npm init -y" unless File.exist?("package.json")
   run "bin/rails javascript:install:esbuild"
   run "bin/rails css:install:bootstrap"
   run "npm install bootstrap @popperjs/core"
+
+  # Define npm scripts for building JS and CSS without running them.
+  # The final build will be triggered once at the end of the template.
   run %(npm pkg set scripts.build="esbuild app/javascript/*.* --bundle --sourcemap --outdir=app/assets/builds --public-path=/assets")
-  run %(npm pkg set scripts."build:css"="sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules")
+  run %(npm pkg set scripts.build:css:compile="sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules")
+  run %(npm pkg set scripts.build:css:prefix="postcss ./app/assets/builds/application.css --use=autoprefixer --output=./app/assets/builds/application.css")
+  run %(npm pkg set scripts.build:css="npm run build:css:compile && npm run build:css:prefix")
 end
 
 # 5. Configure Propshaft and Rails generators.
