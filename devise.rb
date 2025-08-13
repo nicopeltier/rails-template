@@ -84,7 +84,7 @@ def setup_node_bundling
   # 1. Install all required Node.js dependencies in one go.
   # The `--save-dev` flag ensures they are added to package.json.
   # 1. Install all required Node.js dependencies in one go, including Turbo and Stimulus.
-  run "npm install --save-dev esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core bootstrap-icons @hotwired/turbo-rails @hotwired/stimulus @hotwired/stimulus-loading"
+  run "npm install --save-dev esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core bootstrap-icons @hotwired/turbo-rails @hotwired/stimulus"
 
   # 2. Create the PostCSS configuration file.
   file "postcss.config.js", <<~JS
@@ -145,10 +145,15 @@ def setup_node_bundling
 
   # c. Stimulus controller loader: app/javascript/controllers/index.js
   file "app/javascript/controllers/index.js", <<~JS
-    // Import and register all your controllers from the importmap under controllers/*_controller
-    import { application } from "./application"
-    import { eagerLoadControllersFrom } from "@hotwired/stimulus-loading"
-    eagerLoadControllersFrom("controllers", application)
+    // This file is the entrypoint for all your Stimulus controllers.
+    // Import and register your controllers here.
+    //
+    // Example:
+    // import { application } from "./application"
+    // import HelloController from "./hello_controller.js"
+    // application.register("hello", HelloController)
+
+    import "./application"
   JS
 
   # Update the application layout to use the bundled assets instead of importmaps.
