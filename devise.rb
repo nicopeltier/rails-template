@@ -86,6 +86,12 @@ def setup_node_bundling
   run %(npm pkg set scripts.build:css:compile="sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules")
   run %(npm pkg set scripts.build:css:prefix="postcss ./app/assets/builds/application.css --use=autoprefixer --output=./app/assets/builds/application.css")
   run %(npm pkg set scripts.build:css="npm run build:css:compile && npm run build:css:prefix")
+
+  # Update the application layout to use the bundled assets instead of importmaps.
+  layout_path = "app/views/layouts/application.html.erb"
+  gsub_file layout_path, /<%= stylesheet_link_tag .*%>/, '<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>'
+  gsub_file layout_path, /<%= javascript_importmap_tags .*%>.*$/, '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
+  gsub_file layout_path, /<%= javascript_include_tag .*%>/, '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
 end
 
 # 5. Configure Propshaft and Rails generators.
@@ -201,10 +207,7 @@ def setup_ui
 
 
 
-  layout_path = "app/views/layouts/application.html.erb"
-  gsub_file layout_path, /<%= stylesheet_link_tag .*%>/, '<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>'
-  gsub_file layout_path, /<%= javascript_importmap_tags .*%>.*$/, '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
-  gsub_file layout_path, /<%= javascript_include_tag .*%>/, '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
+
 
   inject_into_file "app/views/layouts/application.html.erb", after: "<body>\n" do
     <<~HTML
