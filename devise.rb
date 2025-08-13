@@ -76,8 +76,8 @@ def setup_node_bundling
   # Initialize npm and install base dependencies
   run "rm -f yarn.lock" # Ensure we don't mix package managers
   run "npm init -y" unless File.exist?("package.json")
-  run "bin/rails javascript:install:esbuild"
-  run "bin/rails css:install:bootstrap"
+  run "bin/rails javascript:install:esbuild --javascript=npm"
+  run "bin/rails css:install:bootstrap --javascript=npm"
   run "npm install bootstrap @popperjs/core"
 
   # Define npm scripts for building JS and CSS without running them.
@@ -274,7 +274,9 @@ TXT
 file "Procfile", "web: bundle exec puma -C config/puma.rb"
 run "touch app/assets/builds/.keep"
 
-run "npm run build && npm run build:css"
+# The build scripts are now correctly defined in package.json.
+# Running them once at the end builds both JS and CSS.
+run "npm run build"
 
 after_bundle do
   rails_command "db:create"
