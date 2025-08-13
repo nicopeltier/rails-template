@@ -104,6 +104,12 @@ end
 # 6. Install and configure Devise.
 def setup_devise
   generate "devise:install" unless File.exist?("config/initializers/devise.rb")
+  gsub_file "config/initializers/devise.rb",
+            /config\.mailer_sender = .*/,
+            'config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"'
+  gsub_file "config/initializers/devise.rb",
+            "# config.sign_out_via = :delete",
+            "config.sign_out_via = :get"
   generate "devise", "User" unless File.exist?("app/models/user.rb")
 
   devise_migration = Dir.glob("db/migrate/*_devise_create_users.rb").first
