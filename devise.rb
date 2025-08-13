@@ -83,6 +83,10 @@ def setup_node_bundling
   run "bin/rails css:install:bootstrap"
   run "npm install bootstrap @popperjs/core"
 
+  # The cssbundling-rails installer hardcodes 'yarn' into the package.json scripts.
+  # We must manually replace them with 'npm' to enforce consistency.
+  gsub_file "package.json", /"yarn(?!.lock)/, '"npm run'
+
   # Define npm scripts for building JS and CSS without running them.
   # The final build will be triggered once at the end of the template.
   run %(npm pkg set scripts.build="esbuild app/javascript/*.* --bundle --sourcemap --outdir=app/assets/builds --public-path=/assets")
