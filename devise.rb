@@ -32,7 +32,11 @@ run "pgrep -f spring | xargs -r kill -9 || true"
 # 2. Set Ruby version for the project.
 file ".ruby-version", RUBY_VERSION
 
-# 3. Configure Gemfile for Rails 8, Propshaft, and Bundling.
+# 3. Create .railsrc to configure Rails installer options.
+# This must be done at the top to ensure it's available for subsequent commands.
+file ".railsrc", "--skip-spring\n--javascript=npm\n"
+
+# 4. Configure Gemfile for Rails 8, Propshaft, and Bundling.
 def setup_gemfile
   # Force npm as the JavaScript installer by creating a package.json file.
   # This makes the bundler installers default to npm instead of yarn.
