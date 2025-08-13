@@ -81,6 +81,8 @@ def setup_node_bundling
   # We will perform all setup steps manually for full control.
 
   # 1. Install all required Node.js dependencies as dev dependencies.
+  # 1. Install all required Node.js dependencies in one go.
+  # The `--save-dev` flag ensures they are added to package.json.
   run "npm install --save-dev esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core bootstrap-icons"
 
   # 2. Create the PostCSS configuration file.
@@ -107,6 +109,10 @@ def setup_node_bundling
   JS
 
   # 4. Create the main stylesheet with Bootstrap imports.
+  # 4. Create the main stylesheet with Bootstrap imports using relative paths.
+  # This is more robust than relying on load paths.
+  # 4. Create the main stylesheet with simple Bootstrap imports.
+  # The --load-path option in the build script will resolve these.
   file "app/assets/stylesheets/application.bootstrap.scss", <<~SCSS
     @import 'bootstrap/scss/bootstrap';
     @import 'bootstrap-icons/font/bootstrap-icons';
@@ -315,11 +321,7 @@ file "Procfile", "web: bundle exec puma -C config/puma.rb"
 run "mkdir -p app/assets/builds"
 run "touch app/assets/builds/.keep"
 
-# Force a clean installation of all Node dependencies before building.
-# This is the most reliable way to ensure all binaries are available.
-run "rm -rf node_modules"
-run "rm -f package-lock.json"
-run "npm install"
+# Build the assets using the scripts defined above.
 run "npm run build && npm run build:css"
 
 after_bundle do
