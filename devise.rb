@@ -34,7 +34,9 @@ file ".ruby-version", RUBY_VERSION
 
 # 3. Create .railsrc to configure Rails installer options.
 # This must be done at the top to ensure it's available for subsequent commands.
-file ".railsrc", "--skip-spring\n--javascript=npm\n"
+# 3. Create .railsrc to configure Rails installer options.
+# We skip Hotwire (Turbo/Stimulus) installation because we handle it manually.
+file ".railsrc", "--skip-spring\n--skip-hotwire\n--javascript=npm\n"
 
 # 4. Configure Gemfile for Rails 8, Propshaft, and Bundling.
 def setup_gemfile
