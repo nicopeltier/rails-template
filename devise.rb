@@ -81,7 +81,7 @@ def setup_node_bundling
   # We will perform all setup steps manually for full control.
 
   # 1. Install all required Node.js dependencies as dev dependencies.
-  run "npm install --save-dev esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core"
+  run "npm install --save-dev esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core bootstrap-icons"
 
   # 2. Create the PostCSS configuration file.
   file "postcss.config.js", <<~JS
