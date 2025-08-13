@@ -1,328 +1,242 @@
 # frozen_string_literal: true
 # =============================================================================
-# Rails Template — devise.rb
-# Goal: generate a Rails 8.0.2 app ready to go with:
-#  - Ruby 3.4.5
-#  - Propshaft 1.2.1 (no Sprockets) using the “manifest” mode
-#  - jsbundling-rails + cssbundling-rails with NPM
-#  - Bootstrap + Popper via NPM (no bootstrap gem)
-#  - Devise installed and configured (ensured & idempotent)
-#  - Heroku-friendly (Node + Ruby precompilation)
+# Rails Template: Devise for Rails 8
 #
-# IMPORTANT — How to use this template:
-#   rails new \
+# Description:
+#   Generates a Rails 8 app with a modern asset pipeline, Devise, and other
+#   sensible defaults.
+#
+# Target Stack:
+#   - Ruby 3.4.5
+#   - Rails 8.0.2
+#   - Propshaft (no Sprockets)
+#   - jsbundling-rails + cssbundling-rails (with esbuild and Sass/Bootstrap)
+#   - Devise for authentication
+#   - Simple Form with Bootstrap wrappers
+#   - Heroku-ready with a Procfile
+#
+# Usage:
+#   rails new YOUR_APP_NAME \
 #     -d postgresql \
-#     -m PATH/TO/devise.rb \
-#     YOUR_APP_NAME
-#
-# (The template sets up jsbundling/cssbundling, configures NPM, Propshaft,
-#  Bootstrap, and Devise.)
+#     -m /path/to/this/devise.rb
 # =============================================================================
 
-# -----------------------------------------------------------------------------#
-# Target versions (you can adjust here if needed).
-# -----------------------------------------------------------------------------#
-RUBY_TARGET       = "3.4.5"   # Ruby version to pin in Gemfile and .ruby-version.
-RAILS_TARGET      = "8.0.2"   # Rails version to lock in Gemfile.
-PROPSHAFT_VERSION = "1.2.1"   # Propshaft version (pin to avoid surprises).
+# --- Template Configuration ---
+RUBY_VERSION      = "3.4.5"
+RAILS_VERSION     = "8.0.2"
+PROPSHAFT_VERSION = "1.2.1"
 
-# -----------------------------------------------------------------------------#
-# 1) Kill Spring (optional but avoids cache issues during setup)
-#    Why: Spring keeps Ruby processes in memory. Killing it prevents using stale
-#    processes while we generate the app.
-# -----------------------------------------------------------------------------#
+# 1. Stop Spring to ensure a clean run.
 run "pgrep -f spring | xargs -r kill -9 || true"
 
-# -----------------------------------------------------------------------------#
-# 2) .ruby-version — enforce same version locally (rbenv/asdf/rvm will read it)
-# -----------------------------------------------------------------------------#
-file ".ruby-version", RUBY_TARGET
+# 2. Set Ruby version for the project.
+file ".ruby-version", RUBY_VERSION
 
-# -----------------------------------------------------------------------------#
-# 3) Gemfile — impose versions and prepare the app on the Ruby side.
-#    - rails '8.0.2' per requirement
-#    - propshaft '1.2.1' and ensure no sprockets
-#    - devise for authentication
-#    - jsbundling-rails / cssbundling-rails to compile via NPM
-#    - remove importmap-rails (useless when using jsbundling)
-#    NOTE: We now **replace** any existing `gem "propshaft"` line instead of
-#    adding a new one, to avoid Bundler errors for duplicates.
-# -----------------------------------------------------------------------------#
-# Ensure a `ruby "x.y.z"` directive exists; replace/insert as needed.
-if File.read("Gemfile") =~ /^ruby /
-  gsub_file "Gemfile", /^ruby .*\n/, %(ruby "#{RUBY_TARGET}"\n)
-else
-  inject_into_file "Gemfile", %(ruby "#{RUBY_TARGET}"\n), after: "source \"https://rubygems.org\"\n"
+# 3. Configure Gemfile for Rails 8, Propshaft, and Bundling.
+#    - Pin key versions for consistency.
+#    - Remove conflicting gems like importmap-rails and sprockets-rails.
+#    - Add gems for authentication, forms, and asset bundling.
+def setup_gemfile
+  # Set Ruby version
+  gsub_file "Gemfile", /^ruby .*/, %(ruby "#{RUBY_VERSION}")
+
+  # Pin Rails version
+  gsub_file "Gemfile", /^gem "rails", .*/, %(gem "rails", "#{RAILS_VERSION}")
+
+  # Remove gems we are replacing
+  gsub_file "Gemfile", /^\s*# Use JavaScript with ESM import maps.*\n/, ""
+  gsub_file "Gemfile", /^\s*gem "importmap-rails".*\n/, ""
+  gsub_file "Gemfile", /^\s*gem "sprockets-rails".*\n/, ""
+
+  # Ensure Propshaft is correctly configured and pinned
+  if File.read("Gemfile").match?(/gem "propshaft"/)
+    gsub_file "Gemfile", /gem "propshaft".*/, %(gem "propshaft", "#{PROPSHAFT_VERSION}")
+  else
+    append_to_file "Gemfile", %(\ngem "propshaft", "#{PROPSHAFT_VERSION}"\n)
+  end
+
+  # Add core gems for our stack
+  append_to_file "Gemfile", <<~RUBY
+
+    # --- Authentication & Forms ---
+    gem "devise"
+    gem "simple_form"
+
+    # --- Asset Bundling (replaces importmap/sprockets) ---
+    gem "jsbundling-rails"
+    gem "cssbundling-rails"
+  RUBY
 end
 
-# Lock the Rails version.
-gsub_file "Gemfile", /^gem ["']rails["'].*$/, %(gem "rails", "#{RAILS_TARGET}")
+setup_gemfile
 
-# Remove Sprockets & importmap if present (we want to avoid conflicts).
-gsub_file "Gemfile", /^gem ["']sprockets-rails["'].*\n/, ""
-gsub_file "Gemfile", /^gem ["']importmap-rails["'].*\n/, ""
-
-# Ensure Propshaft is present exactly once and pinned to PROPSHAFT_VERSION.
-if File.read("Gemfile") =~ /^gem ["']propshaft["']/
-  gsub_file "Gemfile", /^gem ["']propshaft["'].*$/, %(gem "propshaft", "#{PROPSHAFT_VERSION}")
-else
-  append_to_file "Gemfile", %(
-  gem "propshaft", "#{PROPSHAFT_VERSION}"
-)
-end
-
-# Add our key gems (respecting Rails 8 default Gemfile structure).  
-# (We deliberately DO NOT add propshaft here anymore to avoid duplicates.)
-append_to_file "Gemfile", <<~RUBY
-
-  # --- Authentication ---
-  gem "devise"                            # Battle-tested authentication gem (generates User, controllers, views, etc.)
-
-  # --- Bundling via Node/NPM ---
-  gem "jsbundling-rails"                  # Hooks JS bundlers (esbuild/rollup/webpack) into Rails precompile
-  gem "cssbundling-rails"                 # Same for CSS (Sass/PostCSS/Bootstrap/Bulma/Tailwind via Node)
-RUBY
-
-# Notes:
-# - pg, puma, bootsnap… are already present in the default Rails 8 Gemfile.
-# - Do NOT add the 'bootstrap' gem. We’ll install Bootstrap from NPM.
-# - Do NOT add 'sass-rails' / 'sassc-rails' (Sprockets-era) to avoid conflicts.
-
-# -----------------------------------------------------------------------------#
-# 4) Bundle install — install gems above.
-# -----------------------------------------------------------------------------#
+# 4. Install all gems.
 run "bundle install"
 
-# -----------------------------------------------------------------------------#
-# 5) Node / NPM — enforce NPM (not yarn) and install JS/CSS tooling.
-#    Explanation:
-#      - jsbundling-rails installs a bundler (we choose esbuild for simplicity).
-#      - cssbundling-rails installs a preset (we choose bootstrap).
-#      - install bootstrap + @popperjs/core via NPM (no bootstrap gem).
-# -----------------------------------------------------------------------------#
-# Avoid Yarn being chosen by default if it exists on the machine.
-run "rm -f yarn.lock"
+# 5. Set up Node.js for asset bundling.
+#    - Enforce NPM over Yarn.
+#    - Install esbuild for JS and Sass/Bootstrap for CSS.
+#    - Configure build scripts in package.json.
+def setup_node_bundling
+  # Ensure NPM is used
+  run "rm -f yarn.lock"
+  run "npm init -y" unless File.exist?("package.json")
 
-# Initialize package.json if absent (Rails might not have created it).
-run "npm init -y" unless File.exist?("package.json")
+  # Install bundlers
+  run "bin/rails javascript:install:esbuild"
+  run "bin/rails css:install:bootstrap" # Uses the Sass CLI preset
 
-# Install and configure the JS bundler (esbuild).
-run "bin/rails javascript:install:esbuild"
+  # Install Bootstrap JS dependencies
+  run "npm install bootstrap @popperjs/core"
 
-# Install and configure the CSS bundler with Bootstrap (via Sass CLI).
-run "bin/rails css:install:bootstrap"
-
-# Add Bootstrap & Popper on the JS side for interactive components (dropdowns, modals…)
-run "npm install bootstrap @popperjs/core"
-
-# Adjust NPM scripts to match the requirement: `npm run build` and `npm run build:css`
-# - build     : bundle JS → app/assets/builds (then digested by Propshaft)
-# - build:css : compile Bootstrap SCSS → app/assets/builds/application.css
-run %(npm pkg set scripts.build="esbuild app/javascript/*.* --bundle --sourcemap --outdir=app/assets/builds --public-path=/assets")
-# The Bootstrap preset already created build:css; we overwrite to ensure the exact format and paths we want:
-run %(npm pkg set scripts."build:css"="sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map")
-
-# -----------------------------------------------------------------------------#
-# 6) JS entrypoint — load Bootstrap JS (for tooltips/modals, etc.)
-#    Explanation: import "bootstrap" activates Bootstrap’s JS (which depends on
-#    Popper for some components).
-# -----------------------------------------------------------------------------#
-application_js_path = "app/javascript/application.js"
-append_to_file application_js_path, %(
-// Enable Bootstrap JS components
-import "bootstrap"
-)
-
-# -----------------------------------------------------------------------------#
-# 7) Propshaft — “manifest-only” behavior in production.
-#    Key idea: in development, Propshaft serves assets via the load path.
-#              in production, after `assets:precompile`, it relies on the MANIFEST
-#              (public/assets/.manifest.json) — that’s what you want.
-#    Actions:
-#     - Add app/assets/builds to the asset paths (where js/css bundles are emitted)
-#     - Exclude source folders to avoid duplicates in production
-#       (we don’t want source SCSS/JS to be copied as-is).
-# -----------------------------------------------------------------------------#
-initializer "assets.rb", <<~RUBY
-  # Be sure to restart your server when you modify this file.
-
-  # Asset version (handy to invalidate caches if needed)
-  Rails.application.config.assets.version = "1.0"
-
-  # Where JS/CSS compiled by bundlers are emitted (then digested by Propshaft)
-  Rails.application.config.assets.paths << Rails.root.join("app/assets/builds")
-
-  # Exclude compilation sources from the load path to avoid duplicates in production
-  # Explanation: our SCSS (source) becomes a single final CSS file in builds/.
-  # Same for JS. We ask Propshaft to ignore the source folders.
-  Rails.application.config.assets.excluded_paths << Rails.root.join("app/javascript")
-  Rails.application.config.assets.excluded_paths << Rails.root.join("app/assets/stylesheets")
-RUBY
-
-# Production: explicitly never compile on the fly.
-gsub_file "config/environments/production.rb",
-          /#?\s*config\.assets\.compile\s*=.*\n?/,
-          "config.assets.compile = false\n"
-append_to_file "config/environments/production.rb", <<~RUBY
-
-  # Propshaft in manifest mode (default behavior after precompile):
-  # - Files are served via the .manifest.json mapping
-  # - Ensures fingerprinted URLs and long cache
-  # Heroku: the Ruby build will run `assets:precompile`, which triggers `npm run build`
-  # and `npm run build:css` thanks to the *bundling-rails gems.
-RUBY
-
-# -----------------------------------------------------------------------------#
-# 8) Layout — ensure helpers reference Propshaft bundles.
-#    - stylesheet_link_tag "application"         → uses app/assets/builds/application.css
-#    - javascript_include_tag "application"      → uses app/assets/builds/application.js
-#    - data-turbo-track="reload"                 → auto-reload when assets change
-# -----------------------------------------------------------------------------#
-gsub_file "app/views/layouts/application.html.erb",
-          /<%= stylesheet_link_tag .* %>/,
-          %(<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>)
-
-gsub_file "app/views/layouts/application.html.erb",
-          /<%= javascript_include_tag .* %>/,
-          %(<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>)
-
-# If the default layout is missing these tags (rare), insert them cleanly.
-layout_path = "app/views/layouts/application.html.erb"
-if File.exist?(layout_path) && !File.read(layout_path).include?("stylesheet_link_tag")
-  inject_into_file layout_path,
-    %(
-    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-),
-    after: /<head>.*\n/
-end
-if File.exist?(layout_path) && !File.read(layout_path).include?("javascript_include_tag")
-  inject_into_file layout_path,
-    %(
-    <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
-),
-    before: %r{</head>}
+  # Define build scripts in package.json
+  run %(npm pkg set scripts.build="esbuild app/javascript/*.* --bundle --sourcemap --outdir=app/assets/builds --public-path=/assets")
+  run %(npm pkg set scripts."build:css"="sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules")
 end
 
-# -----------------------------------------------------------------------------#
-# 9) Devise — ensure full installation but avoid duplicates
-#    Rationale: Devise must be present after template run, but the generator
-#    should be idempotent if the template is rerun or the model/migration exist.
-#    Steps:
-#      - Run `devise:install` if the initializer is missing.
-#      - Generate `devise User` only if both the model and a migration are absent.
-#      - If a Devise migration exists, harden it with `if_not_exists` to avoid
-#        crashes when the `users` table/index already exist.
-# -----------------------------------------------------------------------------#
-  generate "devise:install"
-  generate "devise", "User"
-  rails_command "db:migrate"
-  generate("devise:views")
-  
+setup_node_bundling
 
+# 6. Configure Propshaft.
+#    - Create an initializer to define asset paths.
+#    - Ensure production environment uses precompiled assets only.
+def setup_propshaft
+  initializer "assets.rb", <<~RUBY
+    # Be sure to restart your server when you modify this file.
+    Rails.application.config.assets.version = "1.0"
 
+    # Add the folder with our compiled assets to Propshaft's search path.
+    Rails.application.config.assets.paths << Rails.root.join("app/assets/builds")
 
+    # Exclude source asset directories to prevent Propshaft from serving them directly.
+    Rails.application.config.assets.excluded_paths << Rails.root.join("app/javascript")
+    Rails.application.config.assets.excluded_paths << Rails.root.join("app/assets/stylesheets")
+  RUBY
 
-environment 'config.action_mailer.default_url_options = { host: "localhost", port: 3000 }', env: "development"
-environment 'config.action_mailer.default_url_options = { host: "www.example.com" }', env: "test"
+  # Disable on-the-fly compilation in production for performance and security.
+  gsub_file "config/environments/production.rb",
+            /#?\s*config\.assets\.compile\s*=.*/,
+            "config.assets.compile = false"
+end
 
-environment <<~RUBY, env: "production"
-  config.action_mailer.default_url_options = {
-    host: ENV.fetch("APP_HOST") { "example.com" },
-    protocol: "https"
-  }
-RUBY
+setup_propshaft
 
-# -----------------------------------------------------------------------------#
-# 10) Flashes — a simple partial + include in the layout.
-#      (Bootstrap handles styles .alert .alert-info/success/warning/danger)
-# -----------------------------------------------------------------------------#
-file "app/views/shared/_flashes.html.erb", <<~ERB
-  <% if notice %>
-    <div class="alert alert-info alert-dismissible fade show" role="alert">
-      <%= notice %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  <% end %>
-  <% if alert %>
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-      <%= alert %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  <% end %>
-ERB
+# 7. Update layout to include bundled assets.
+#    - Replace default helpers with ones pointing to our build outputs.
+def update_layout
+  layout_path = "app/views/layouts/application.html.erb"
+  return unless File.exist?(layout_path)
 
-# Insert the flashes render right after opening <body>.
-if File.exist?(layout_path) && !File.read(layout_path).include?('render "shared/flashes"')
   gsub_file layout_path,
-            /<body[^>]*>/,
-            "\\0\n    <%= render \"shared/flashes\" %>"
+            /<%= stylesheet_link_tag .*%>/,
+            '<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>'
+
+  gsub_file layout_path,
+            /<%= javascript_importmap_tags .*%>.*$/,
+            '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
+  
+  gsub_file layout_path,
+            /<%= javascript_include_tag .*%>/,
+            '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
 end
 
-# -----------------------------------------------------------------------------#
-# 11) Minimal home page — quick sanity check that everything works.
-# -----------------------------------------------------------------------------#
-generate :controller, "pages", "home"
-route 'root to: "pages#home"'
-append_to_file "app/views/pages/home.html.erb", <<~ERB
+update_layout
 
-  <div class="container py-5">
-    <h1 class="mb-3">Hello Rails 8 + Propshaft + Bootstrap + Devise 👋</h1>
-    <p>Si tu vois cette page avec du style Bootstrap, c’est gagné.</p>
-  </div>
-ERB
+# 8. Import Bootstrap JavaScript in the entrypoint.
+append_to_file "app/javascript/application.js", %(\n// Import and start all Bootstrap JS\nimport "bootstrap"\n)
 
-# -----------------------------------------------------------------------------#
-# 12) Procfile (Heroku) — Puma in production.
-#     Why: Heroku detects Rails, but declaring Puma explicitly is healthy.
-# -----------------------------------------------------------------------------#
-file "Procfile", <<~YAML
-  web: bundle exec puma -C config/puma.rb
-YAML
+# 9. Install and configure Devise.
+#    - Run installers and generators idempotently.
+#    - Harden the migration to be safely re-runnable.
+def setup_devise
+  # Install Devise if the initializer is missing.
+  generate "devise:install" unless File.exist?("config/initializers/devise.rb")
 
-# -----------------------------------------------------------------------------#
-# 13) Gitignore — ignore builds and node_modules; keep a .keep file.
-# -----------------------------------------------------------------------------#
+  # Generate User model only if it doesn't exist.
+  unless File.exist?("app/models/user.rb")
+    generate "devise", "User"
+  end
+
+  # Make the Devise migration robust for re-runs.
+  devise_migration = Dir.glob("db/migrate/*_devise_create_users.rb").first
+  if devise_migration
+    gsub_file devise_migration, /create_table :users do/, 'create_table :users, if_not_exists: true do'
+    gsub_file devise_migration, /(add_index.*)/, 'add_index :users, :email, unique: true, if_not_exists: true'
+    gsub_file devise_migration, /(add_index.*)/, 'add_index :users, :reset_password_token, unique: true, if_not_exists: true'
+  end
+
+  # Configure mailer URLs for each environment.
+  environment 'config.action_mailer.default_url_options = { host: "localhost", port: 3000 }', env: "development"
+  environment 'config.action_mailer.default_url_options = { host: "www.example.com" }', env: "test"
+  environment 'config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST", "your_production_domain.com") }', env: "production"
+end
+
+setup_devise
+
+# 10. Install Simple Form with Bootstrap wrappers.
+generate "simple_form:install", "--bootstrap" unless File.exist?("config/initializers/simple_form_bootstrap.rb")
+
+# 11. Create a home page and flash messages partial.
+def setup_ui
+  generate :controller, "pages", "home", "--skip-routes"
+  route 'root to: "pages#home"'
+
+  # Create a shared partial for flash messages.
+  file "app/views/shared/_flashes.html.erb", <<~ERB
+    <% if notice %>
+      <div class="alert alert-info alert-dismissible fade show m-3" role="alert">
+        <%= notice %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    <% end %>
+    <% if alert %>
+      <div class="alert alert-warning alert-dismissible fade show m-3" role="alert">
+        <%= alert %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    <% end %>
+  ERB
+
+  # Render flashes in the main layout.
+  inject_into_file "app/views/layouts/application.html.erb",
+                   "    <%= render 'shared/flashes' %>\n",
+                   after: /<body.*>\n/
+
+  # Add sample content to the home page.
+  append_to_file "app/views/pages/home.html.erb", <<~ERB
+    <div class="container py-5">
+      <h1>Welcome to Rails 8!</h1>
+      <p>This app is running with Propshaft, esbuild, Bootstrap, and Devise.</p>
+    </div>
+  ERB
+end
+
+setup_ui
+
+# 12. Configure Git, Procfile, and database.
 append_to_file ".gitignore", <<~TXT
 
-  # --- Node & builds (generated by js/css bundling) ---
+  # Ignore Node dependencies and compiled assets.
   /node_modules
   /app/assets/builds/*
   !/app/assets/builds/.keep
 TXT
-run "mkdir -p app/assets/builds && touch app/assets/builds/.keep"
 
-# -----------------------------------------------------------------------------#
-# 14) Database — create and run Devise (User) migration.
-# -----------------------------------------------------------------------------#
+file "Procfile", "web: bundle exec puma -C config/puma.rb"
+run "touch app/assets/builds/.keep"
+
+# 13. Create database and run migrations.
 rails_command "db:create"
 rails_command "db:migrate"
 
-# -----------------------------------------------------------------------------#
-# 15) Final prep — build assets once (dev).
-#     You can run again locally:
-#       npm run build
-#       npm run build:css
-# -----------------------------------------------------------------------------#
-run "npm run build"
-run "npm run build:css"
+# 14. Build assets for the first time.
+run "npm run build && npm run build:css"
 
-# -----------------------------------------------------------------------------#
-# 16) Initial commit (optional) — handy to start from a clean slate.
-# -----------------------------------------------------------------------------#
+# 15. Finalize with a git commit.
 after_bundle do
   git :init
   git add: "."
-  git commit: %q(-m "Initial commit: Rails 8.0.2 + Propshaft 1.2.1 + js/css bundling (NPM) + Bootstrap + Devise (ensured & idempotent)")
+  git commit: %q(-m "Initial commit: Setup Rails 8 with Propshaft, Devise, and JS/CSS bundling")
+  
+  say "\n✅ Template applied successfully!", :green
+  say "🚀 Your new Rails app is ready. Start the server with: bin/dev", :cyan
 end
-
-# =============================================================================
-# Educational notes (reminder):
-# - Propshaft serves assets: in dev from the load paths, in prod via
-#   a manifest (.manifest.json) generated by `rails assets:precompile`.
-# - jsbundling-rails/cssbundling-rails automatically hook `npm run build`
-#   and `npm run build:css` into `assets:precompile`. On Heroku, the Ruby
-#   build will execute these scripts if the Node buildpack comes before the
-#   Ruby buildpack.
-# - We do NOT use the bootstrap gem (avoid Sprockets conflicts). Everything goes
-#   through NPM → propshaft → helpers (`stylesheet_link_tag`/`javascript_include_tag`).
-# =============================================================================
