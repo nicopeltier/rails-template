@@ -73,6 +73,12 @@ setup_gemfile
 # 4. Install all gems.
 run "bundle install"
 
+# We install Simple Form with Bootstrap wrappers once; if already present, skip.
+unless File.exist?("config/initializers/simple_form.rb") || File.exist?("config/initializers/simple_form_bootstrap.rb")
+  generate "simple_form:install", "--bootstrap"
+end
+
+
 # 5. Set up Node.js for asset bundling.
 #    - Enforce NPM over Yarn.
 #    - Install esbuild for JS and Sass/Bootstrap for CSS.
@@ -141,6 +147,27 @@ end
 
 update_layout
 
+
+# Generators
+########################################
+generators = <<~RUBY
+  config.generators do |generate|
+    generate.assets false
+    generate.helper false
+    generate.test_framework :test_unit, fixture: false
+  end
+RUBY
+
+environment generators
+
+# General Config
+########################################
+general_config = <<~RUBY
+  config.action_controller.raise_on_missing_callback_actions = false if Rails.version >= "7.1.0"
+RUBY
+
+environment general_config
+
 # 8. Import Bootstrap JavaScript in the entrypoint.
 append_to_file "app/javascript/application.js", %(\n// Import and start all Bootstrap JS\nimport "bootstrap"\n)
 
@@ -164,6 +191,44 @@ def setup_devise
     gsub_file devise_migration, /(add_index.*)/, 'add_index :users, :reset_password_token, unique: true, if_not_exists: true'
   end
 
+# Application controller
+  ########################################
+  run "rm app/controllers/application_controller.rb"
+  file "app/controllers/application_controller.rb", <<~RUBY
+    class ApplicationController < ActionController::Base
+      before_action :authenticate_user!
+    end
+  RUBY
+
+  # migrate + devise views
+  ########################################
+  rails_command "db:migrate"
+  generate("devise:views")
+
+  link_to = <<~HTML
+    <p>Unhappy? <%= link_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?" }, method: :delete %></p>
+  HTML
+  button_to = <<~HTML
+    <div class="d-flex align-items-center">
+      <div>Unhappy?</div>
+      <%= button_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?" }, method: :delete, class: "btn btn-link" %>
+    </div>
+  HTML
+  gsub_file("app/views/devise/registrations/edit.html.erb", link_to, button_to)
+
+  # Pages Controller
+  ########################################
+  run "rm app/controllers/pages_controller.rb"
+  file "app/controllers/pages_controller.rb", <<~RUBY
+    class PagesController < ApplicationController
+      skip_before_action :authenticate_user!, only: [ :home ]
+
+      def home
+      end
+    end
+  RUBY
+
+
   # Configure mailer URLs for each environment.
   environment 'config.action_mailer.default_url_options = { host: "localhost", port: 3000 }', env: "development"
   environment 'config.action_mailer.default_url_options = { host: "www.example.com" }', env: "test"
@@ -177,6 +242,7 @@ generate "simple_form:install", "--bootstrap" unless File.exist?("config/initial
 
 # 11. Create a home page and flash messages partial.
 def setup_ui
+
   generate :controller, "pages", "home", "--skip-routes"
   route 'root to: "pages#home"'
 
@@ -201,6 +267,18 @@ def setup_ui
                    "    <%= render 'shared/flashes' %>\n",
                    after: /<body.*>\n/
 
+ # navbar
+
+run "curl -L https://raw.githubusercontent.com/lewagon/awesome-navbars/master/templates/_navbar_wagon.html.erb > app/views/shared/_navbar.html.erb"
+
+inject_into_file "app/views/layouts/application.html.erb", after: "<body>" do
+  <<~HTML
+    <%= render "shared/navbar" %>
+    <%= render "shared/flashes" %>
+  HTML
+end
+
+
   # Add sample content to the home page.
   append_to_file "app/views/pages/home.html.erb", <<~ERB
     <div class="container py-5">
@@ -208,9 +286,14 @@ def setup_ui
       <p>This app is running with Propshaft, esbuild, Bootstrap, and Devise.</p>
     </div>
   ERB
+
+
+
+
 end
 
 setup_ui
+
 
 # 12. Configure Git, Procfile, and database.
 append_to_file ".gitignore", <<~TXT
