@@ -151,13 +151,6 @@ def setup_node_bundling
     eagerLoadControllersFrom("controllers", application)
   JS
 
-  # Define npm scripts for building JS and CSS without running them.
-  # The final build will be triggered once at the end of the template.
-    run %(npm pkg set scripts.build="node esbuild.config.js")
-  run %(npm pkg set scripts.build:css:compile="./node_modules/.bin/sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules")
-  run %(npm pkg set scripts.build:css:prefix="./node_modules/.bin/postcss ./app/assets/builds/application.css --use=autoprefixer --output=./app/assets/builds/application.css")
-  run %(npm pkg set scripts.build:css="npm run build:css:compile && npm run build:css:prefix")
-
   # Update the application layout to use the bundled assets instead of importmaps.
   layout_path = "app/views/layouts/application.html.erb"
   gsub_file layout_path, /<%= stylesheet_link_tag .*%>/, '<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>'
@@ -314,23 +307,25 @@ def setup_trestle
   generate "trestle:resource", "User"
 end
 
-# --- Main Execution --- 
+# --- Main Execution ---
 
+# 1. Setup gems and bundle.
 setup_gemfile
 run "bundle install"
 
+# 2. Setup Simple Form for Bootstrap.
 generate "simple_form:install", "--bootstrap" unless File.exist?("config/initializers/simple_form_bootstrap.rb")
 
+# 3. Setup Node.js, esbuild, PostCSS, and all JS/CSS files.
 setup_node_bundling
-append_to_file "app/javascript/application.js", %(\n// Import and start all Bootstrap JS\nimport "bootstrap"\n)
 
+# 4. Setup Rails configs, Devise, Trestle, and UI elements.
 setup_rails_config
 setup_devise
 setup_trestle
 setup_ui
 
-# Finalize setup
-# ----------------------------------------
+# 5. Finalize setup: Lock platform, create .env, update .gitignore.
 run "bundle lock --add-platform x86_64-linux"
 run "touch '.env'"
 
@@ -342,21 +337,33 @@ append_to_file ".gitignore", <<~TXT
   !/app/assets/builds/.keep
 TXT
 
-file "Procfile", "web: bundle exec puma -C config/puma.rb"
-run "mkdir -p app/assets/builds"
-run "touch app/assets/builds/.keep"
+# 6. Forcefully overwrite package.json to ensure correct build scripts.
+# This is the definitive fix that prevents jsbundling-rails from overriding our settings.
+file "package.json", <<~JSON, force: true
+  {
+    "name": "app",
+    "private": true,
+    "scripts": {
+      "build": "node esbuild.config.js",
+      "build:css:compile": "sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules",
+      "build:css:prefix": "postcss ./app/assets/builds/application.css --use=autoprefixer --output=./app/assets/builds/application.css",
+      "build:css": "npm run build:css:compile && npm run build:css:prefix"
+    }
+  }
+JSON
 
-# Build the assets using the scripts defined above.
+# 7. Run the final asset build with the correct scripts.
 run "npm run build && npm run build:css"
 
 after_bundle do
   rails_command "db:create"
   rails_command "db:migrate"
 
+  # Initialize Git and make the first commit.
   git :init
   git add: "."
   git commit: %q(-m "Initial commit: Setup Rails 8 with Propshaft, Devise, and JS/CSS bundling")
-  
+
   say "\n✅ Template applied successfully!", :green
   say "🚀 Your new Rails app is ready. Start the server with: bin/dev", :cyan
 end
