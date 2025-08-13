@@ -76,11 +76,42 @@ def setup_node_bundling
   # Initialize npm and install base dependencies
   run "rm -f yarn.lock" # Ensure we don't mix package managers
   run "npm init -y" unless File.exist?("package.json")
-  run "bin/rails javascript:install:esbuild"
-  run "bin/rails css:install:bootstrap"
-  # Explicitly install ALL node dependencies to bypass the faulty generators.
-  # This ensures esbuild, sass, and postcss are available in node_modules/.bin.
-  run "npm install esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core"
+  # --- Manual Node Asset Setup ---
+  # The Rails asset generators are unreliable in a scripted environment.
+  # We will perform all setup steps manually for full control.
+
+  # 1. Install all required Node.js dependencies as dev dependencies.
+  run "npm install --save-dev esbuild sass postcss-cli autoprefixer bootstrap @popperjs/core"
+
+  # 2. Create the PostCSS configuration file.
+  file "postcss.config.js", <<~JS
+    module.exports = {
+      plugins: {
+        autoprefixer: {},
+      },
+    };
+  JS
+
+  # 3. Create the esbuild configuration file.
+  file "esbuild.config.js", <<~JS
+    const path = require('path');
+    require('esbuild').build({
+      entryPoints: ['application.js'],
+      bundle: true,
+      outdir: path.join(process.cwd(), 'app/assets/builds'),
+      absWorkingDir: path.join(process.cwd(), 'app/javascript'),
+      watch: process.argv.includes('--watch'),
+      sourcemap: true,
+      publicPath: '/assets',
+    }).catch(() => process.exit(1));
+  JS
+
+  # 4. Create the main stylesheet with Bootstrap imports.
+  file "app/assets/stylesheets/application.bootstrap.scss", <<~SCSS
+    @import 'bootstrap/scss/bootstrap';
+    @import 'bootstrap-icons/font/bootstrap-icons';
+  SCSS
+
 
   # Define npm scripts for building JS and CSS without running them.
   # The final build will be triggered once at the end of the template.
@@ -276,6 +307,11 @@ TXT
 file "Procfile", "web: bundle exec puma -C config/puma.rb"
 run "touch app/assets/builds/.keep"
 
+# Force a clean installation of all Node dependencies before building.
+# This is the most reliable way to ensure all binaries are available.
+run "rm -rf node_modules"
+run "rm -f package-lock.json"
+run "npm install"
 run "npm run build && npm run build:css"
 
 after_bundle do
