@@ -34,6 +34,10 @@ file ".ruby-version", RUBY_VERSION
 
 # 3. Configure Gemfile for Rails 8, Propshaft, and Bundling.
 def setup_gemfile
+  # Force npm as the JavaScript installer and remove yarn.lock if it exists.
+  run "rm -f yarn.lock"
+  append_to_file ".railsrc", "--javascript=npm\n"
+
   gsub_file "Gemfile", /^ruby .*/, %(ruby "#{RUBY_VERSION}")
   gsub_file "Gemfile", /^gem "rails", .*/, %(gem "rails", "#{RAILS_VERSION}")
 
@@ -47,16 +51,16 @@ def setup_gemfile
     append_to_file "Gemfile", %(\ngem "propshaft", "#{PROPSHAFT_VERSION}"\n)
   end
 
-  append_to_file "Gemfile", <<~RUBY
+  append_to_file "Gemfile", <<~GEMS
 
-    # --- Authentication & Forms ---
+    # --- Authentication & Authorization ---
     gem "devise"
     gem "simple_form"
 
-    # --- Asset Bundling (replaces importmap/sprockets) ---
+    # --- Asset Bundling ---
     gem "jsbundling-rails"
     gem "cssbundling-rails"
-  RUBY
+  GEMS
 end
 
 # 4. Set up Node.js for asset bundling.
@@ -159,14 +163,20 @@ def setup_ui
   gsub_file layout_path, /<%= stylesheet_link_tag .*%>/, '<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>'
   gsub_file layout_path, /<%= javascript_importmap_tags .*%>.*$/, '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
   gsub_file layout_path, /<%= javascript_include_tag .*%>/, '<%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>'
-  gsub_file layout_path, /<body>/, "<body>\n    <%= render 'shared/navbar' %>\n    <%= render 'shared/flashes' %>"
 
-  append_to_file "app/views/pages/home.html.erb", <<~ERB
-    <div class="container py-5">
-      <h1>Welcome to Rails 8!</h1>
-      <p>This app is running with Propshaft, esbuild, Bootstrap, and Devise.</p>
+  inject_into_file "app/views/layouts/application.html.erb", after: "<body>\n" do
+    <<~HTML
+      <%= render "shared/flashes" %>
+      <%= render "shared/navbar" %>
+    HTML
+  end
+
+  file "app/views/pages/home.html.erb", <<~HTML
+    <div class="container text-center py-5">
+      <h1>Welcome to Your App</h1>
+      <p>This is the home page.</p>
     </div>
-  ERB
+  HTML
 end
 
 # --- Main Execution --- 
@@ -199,12 +209,12 @@ TXT
 file "Procfile", "web: bundle exec puma -C config/puma.rb"
 run "touch app/assets/builds/.keep"
 
-rails_command "db:create"
-rails_command "db:migrate"
-
 run "npm run build && npm run build:css"
 
 after_bundle do
+  rails_command "db:create"
+  rails_command "db:migrate"
+
   git :init
   git add: "."
   git commit: %q(-m "Initial commit: Setup Rails 8 with Propshaft, Devise, and JS/CSS bundling")
