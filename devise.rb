@@ -109,10 +109,10 @@ def setup_devise
             /config\.mailer_sender = .*/,
             'config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"'
 
-  # Configure Devise to allow sign-out via GET request. This is the most robust fix.
+  # Configure Devise to use DELETE for sign-out, which is the secure default.
   gsub_file "config/initializers/devise.rb",
             /#?\s*config\.sign_out_via = .*/,
-            "  config.sign_out_via = :get"
+            "  config.sign_out_via = :delete"
 
   generate "devise", "User" unless File.exist?("app/models/user.rb")
 
@@ -121,6 +121,23 @@ def setup_devise
     gsub_file devise_migration, /create_table :users do/, 'create_table :users, if_not_exists: true do'
     gsub_file devise_migration, /(add_index.*)/, 'add_index :users, :email, unique: true, if_not_exists: true'
     gsub_file devise_migration, /(add_index.*)/, 'add_index :users, :reset_password_token, unique: true, if_not_exists: true'
+  end
+
+  # Add admin flag to User model and migrate.
+  generate "migration", "add_admin_to_users admin:boolean"
+  admin_migration = Dir.glob("db/migrate/*_add_admin_to_users.rb").first
+  if admin_migration
+    gsub_file admin_migration, /add_column :users, :admin, :boolean/, "add_column :users, :admin, :boolean, default: false"
+  end
+
+  # Add is_admin? method to User model.
+  inject_into_file "app/models/user.rb", after: "class User < ApplicationRecord\n" do
+    <<-'RUBY'
+  def is_admin?
+    admin
+  end
+
+    RUBY
   end
 
   file "app/controllers/application_controller.rb", <<~RUBY, force: true
@@ -174,6 +191,12 @@ def setup_ui
 
   run "curl -L https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/_navbar_np.html.erb > app/views/shared/_navbar.html.erb"
 
+  # Ensure the logout link sends a DELETE request using Turbo, which is required
+  # when Devise's sign_out_via is set to :delete.
+  gsub_file "app/views/shared/_navbar.html.erb",
+            'href="/users/sign_out"',
+            'href="<%= destroy_user_session_path %>" data-turbo-method="delete"'
+
 
 
   layout_path = "app/views/layouts/application.html.erb"
@@ -187,6 +210,19 @@ def setup_ui
       <%= render "shared/navbar" %>
     HTML
   end
+
+  # Wrap the main content in a Bootstrap container.
+  gsub_file "app/views/layouts/application.html.erb",
+            "<%= yield %>",
+            <<~HTML
+              <div class="container">
+                <div class="row">
+                  <div class="col">
+                    <%= yield %>
+                  </div>
+                </div>
+              </div>
+            HTML
 
   file "app/views/pages/home.html.erb", <<~HTML
     <div class="container text-center py-5">
