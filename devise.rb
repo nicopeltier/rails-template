@@ -112,6 +112,12 @@ def setup_node_bundling
     @import 'bootstrap-icons/font/bootstrap-icons';
   SCSS
 
+  # 5. Create the main javascript entrypoint.
+  file "app/javascript/application.js", <<~JS
+    // Entry point for the build script in package.json
+    import * as bootstrap from "bootstrap"
+  JS
+
 
   # Define npm scripts for building JS and CSS without running them.
   # The final build will be triggered once at the end of the template.
