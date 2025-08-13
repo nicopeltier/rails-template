@@ -61,6 +61,7 @@ def setup_gemfile
     # --- Authentication & Authorization ---
     gem "devise"
     gem "simple_form"
+    gem "trestle" # Admin framework
 
     # --- Asset Bundling ---
     gem "jsbundling-rails"
@@ -107,6 +108,11 @@ def setup_devise
   gsub_file "config/initializers/devise.rb",
             /config\.mailer_sender = .*/,
             'config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"'
+
+  # Configure Devise to allow sign-out via GET request. This is the most robust fix.
+  gsub_file "config/initializers/devise.rb",
+            /#?\s*config\.sign_out_via = .*/,
+            "  config.sign_out_via = :get"
 
   generate "devise", "User" unless File.exist?("app/models/user.rb")
 
@@ -168,11 +174,7 @@ def setup_ui
 
   run "curl -L https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/_navbar_np.html.erb > app/views/shared/_navbar.html.erb"
 
-  # Ensure the logout link sends a DELETE request using Turbo.
-  # This is the standard and most reliable way in Rails 8.
-  gsub_file "app/views/shared/_navbar.html.erb",
-            'href="/users/sign_out"',
-            'href="<%= destroy_user_session_path %>" data-turbo-method="delete"'
+
 
   layout_path = "app/views/layouts/application.html.erb"
   gsub_file layout_path, /<%= stylesheet_link_tag .*%>/, '<%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>'
@@ -194,6 +196,12 @@ def setup_ui
   HTML
 end
 
+# 8. Install and configure Trestle for admin interface.
+def setup_trestle
+  generate "trestle:install"
+  generate "trestle:resource", "User"
+end
+
 # --- Main Execution --- 
 
 setup_gemfile
@@ -206,6 +214,7 @@ append_to_file "app/javascript/application.js", %(\n// Import and start all Boot
 
 setup_rails_config
 setup_devise
+setup_trestle
 setup_ui
 
 # Finalize setup
