@@ -355,8 +355,12 @@ file "package.json", <<~JSON, force: true
     "name": "app",
     "private": true,
     "dependencies": {
+      "@hotwired/stimulus": "^3.2.2",
+      "@hotwired/turbo-rails": "^8.0.4",
       "@popperjs/core": "^2.11.8",
-      "bootstrap": "^5.3.3"
+      "bootstrap": "^5.3.3",
+      "esbuild": "^0.25.9"
+
     },
     "scripts": {
       "build": "node esbuild.config.js",
@@ -369,7 +373,12 @@ file "package.json", <<~JSON, force: true
       "postcss": "^8.4.35",
       "postcss-cli": "^11.0.0",
       "autoprefixer": "^10.4.17"
+    },
+    "engines": {
+      "node": "20.x",
+      "npm": "10.x"
     }
+
   }
 JSON
 
