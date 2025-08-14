@@ -354,11 +354,21 @@ file "package.json", <<~JSON, force: true
   {
     "name": "app",
     "private": true,
+    "dependencies": {
+      "@popperjs/core": "^2.11.8",
+      "bootstrap": "^5.3.3"
+    },
     "scripts": {
       "build": "node esbuild.config.js",
       "build:css:compile": "sass ./app/assets/stylesheets/application.bootstrap.scss:./app/assets/builds/application.css --no-source-map --load-path=node_modules",
       "build:css:prefix": "postcss ./app/assets/builds/application.css --use=autoprefixer --output=./app/assets/builds/application.css",
       "build:css": "npm run build:css:compile && npm run build:css:prefix"
+    },
+    "devDependencies": {
+      "sass": "^1.71.1",
+      "postcss": "^8.4.35",
+      "postcss-cli": "^11.0.0",
+      "autoprefixer": "^10.4.17"
     }
   }
 JSON
