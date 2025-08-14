@@ -359,6 +359,7 @@ file "package.json", <<~JSON, force: true
       "@hotwired/turbo-rails": "^8.0.4",
       "@popperjs/core": "^2.11.8",
       "bootstrap": "^5.3.3",
+      "bootstrap-icons": "^1.11.3",
       "esbuild": "^0.25.9"
 
     },
