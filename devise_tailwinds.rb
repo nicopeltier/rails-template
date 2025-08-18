@@ -175,66 +175,27 @@ def setup_node_bundling
 
     import { application } from "./application"
     import PrelineController from "./preline_controller"
-
     application.register("preline", PrelineController)
   JS
 
   # d. Preline Stimulus controller for handling Turbo navigation
   file "app/javascript/controllers/preline_controller.js", <<~JS
-    import { Controller } from "@hotwired/stimulus"
+import { Controller } from "@hotwired/stimulus"
+import { HSDropdown, HSCollapse } from "preline"
 
-    export default class extends Controller {
-      connect() {
-        this.initializePreline()
-        this.setupTurboListeners()
-      }
+export default class extends Controller {
+  connect() {
+    this.initializePreline()
+  }
 
-      disconnect() {
-        this.removeTurboListeners()
-      }
-
-      initializePreline() {
-        // Wait for Preline to be available
-        if (typeof window.HSStaticMethods !== 'undefined') {
-          window.HSStaticMethods.autoInit()
-        } else {
-          // Retry after a short delay if Preline isn't loaded yet
-          setTimeout(() => {
-            if (typeof window.HSStaticMethods !== 'undefined') {
-              window.HSStaticMethods.autoInit()
-            }
-          }, 100)
-        }
-      }
-
-      setupTurboListeners() {
-        this.turboLoadHandler = () => this.initializePreline()
-        this.turboBeforeCacheHandler = () => this.cleanupPreline()
-        
-        document.addEventListener('turbo:load', this.turboLoadHandler)
-        document.addEventListener('turbo:before-cache', this.turboBeforeCacheHandler)
-      }
-
-      removeTurboListeners() {
-        if (this.turboLoadHandler) {
-          document.removeEventListener('turbo:load', this.turboLoadHandler)
-        }
-        if (this.turboBeforeCacheHandler) {
-          document.removeEventListener('turbo:before-cache', this.turboBeforeCacheHandler)
-        }
-      }
-
-      cleanupPreline() {
-        // Clean up Preline components before caching
-        if (typeof window.HSStaticMethods !== 'undefined') {
-          // Close any open dropdowns
-          const openDropdowns = document.querySelectorAll('.hs-dropdown-open')
-          openDropdowns.forEach(dropdown => {
-            dropdown.classList.remove('hs-dropdown-open')
-          })
-        }
-      }
-    }
+  initializePreline() {
+    // Initialize dropdowns
+    HSDropdown.autoInit()
+    
+    // Initialize collapse components (for mobile menu)
+    HSCollapse.autoInit()
+  }
+}
   JS
 
   # Update the application layout to use the bundled assets instead of importmaps.
