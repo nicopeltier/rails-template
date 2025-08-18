@@ -29,8 +29,11 @@ PROPSHAFT_VERSION = "1.2.1"
 # 1. Stop Spring to ensure a clean run.
 run "pgrep -f spring | xargs -r kill -9 || true"
 
+# Set npm as the package manager to prevent Yarn usage
+ENV["NODE_PACKAGE_MANAGER"] = "npm"
+
 # 2. Set Ruby version for the project.
-file ".ruby-version", RUBY_VERSION
+file ".ruby-version", RUBY_VERSION, force: true
 
 # 3. Create .railsrc to configure Rails installer options.
 # This must be done at the top to ensure it's available for subsequent commands.
@@ -173,13 +176,69 @@ def setup_node_bundling
   file "app/javascript/controllers/index.js", <<~JS
     // This file is the entrypoint for all your Stimulus controllers.
     // Import and register your controllers here.
-    //
-    // Example:
-    // import { application } from "./application"
-    // import HelloController from "./hello_controller.js"
-    // application.register("hello", HelloController)
 
-    import "./application"
+    import { application } from "./application"
+    import PrelineController from "./preline_controller"
+
+    application.register("preline", PrelineController)
+  JS
+
+  # d. Preline Stimulus controller for handling Turbo navigation
+  file "app/javascript/controllers/preline_controller.js", <<~JS
+    import { Controller } from "@hotwired/stimulus"
+
+    export default class extends Controller {
+      connect() {
+        this.initializePreline()
+        this.setupTurboListeners()
+      }
+
+      disconnect() {
+        this.removeTurboListeners()
+      }
+
+      initializePreline() {
+        // Wait for Preline to be available
+        if (typeof window.HSStaticMethods !== 'undefined') {
+          window.HSStaticMethods.autoInit()
+        } else {
+          // Retry after a short delay if Preline isn't loaded yet
+          setTimeout(() => {
+            if (typeof window.HSStaticMethods !== 'undefined') {
+              window.HSStaticMethods.autoInit()
+            }
+          }, 100)
+        }
+      }
+
+      setupTurboListeners() {
+        this.turboLoadHandler = () => this.initializePreline()
+        this.turboBeforeCacheHandler = () => this.cleanupPreline()
+        
+        document.addEventListener('turbo:load', this.turboLoadHandler)
+        document.addEventListener('turbo:before-cache', this.turboBeforeCacheHandler)
+      }
+
+      removeTurboListeners() {
+        if (this.turboLoadHandler) {
+          document.removeEventListener('turbo:load', this.turboLoadHandler)
+        }
+        if (this.turboBeforeCacheHandler) {
+          document.removeEventListener('turbo:before-cache', this.turboBeforeCacheHandler)
+        }
+      }
+
+      cleanupPreline() {
+        // Clean up Preline components before caching
+        if (typeof window.HSStaticMethods !== 'undefined') {
+          // Close any open dropdowns
+          const openDropdowns = document.querySelectorAll('.hs-dropdown-open')
+          openDropdowns.forEach(dropdown => {
+            dropdown.classList.remove('hs-dropdown-open')
+          })
+        }
+      }
+    }
   JS
 
   # Update the application layout to use the bundled assets instead of importmaps.
@@ -199,6 +258,16 @@ def setup_rails_config
     Rails.application.config.assets.paths << Rails.root.join("app/assets/builds")
     Rails.application.config.assets.excluded_paths << Rails.root.join("app/javascript")
     Rails.application.config.assets.excluded_paths << Rails.root.join("app/assets/stylesheets")
+  RUBY
+
+  # Force npm as package manager in Rails configuration
+  initializer "package_manager.rb", <<~RUBY
+    Rails.application.config.generators do |g|
+      g.javascript_engine :esbuild
+    end
+    
+    # Ensure npm is used instead of yarn
+    ENV["NODE_PACKAGE_MANAGER"] = "npm"
   RUBY
 
   gsub_file "config/environments/production.rb", /#?\s*config\.assets\.compile\s*=.*/, "config.assets.compile = false"
@@ -304,6 +373,11 @@ def setup_ui
   ERB
 
   run "curl -L https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/_navbar_tailwinds_np.html.erb > app/views/shared/_navbar.html.erb"
+  
+  # Add Preline Stimulus controller to navbar
+  gsub_file "app/views/shared/_navbar.html.erb", 
+            '<nav class="bg-white shadow-lg">', 
+            '<nav class="bg-white shadow-lg" data-controller="preline">'
 
 
 
