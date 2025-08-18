@@ -77,6 +77,11 @@ end
 def setup_node_bundling
   # Initialize npm and install base dependencies
   run "rm -f yarn.lock" # Ensure we don't mix package managers
+  run "rm -f .yarnrc*" # Remove any Yarn configuration files
+  
+  # Explicitly set npm as the package manager
+  file ".npmrc", "package-manager=npm"
+  
   run "npm init -y" unless File.exist?("package.json")
   # --- Manual Node Asset Setup ---
   # The Rails asset generators are unreliable in a scripted environment.
@@ -398,7 +403,8 @@ file "package.json", <<~JSON, force: true
   }
 JSON
 
-# 7. Run the final asset build with the correct scripts.
+# 7. Ensure clean npm environment and run builds
+run "rm -f yarn.lock .yarnrc*" # Final cleanup of any Yarn files
 run "npm install" # Ensure all dependencies are installed
 run "npm run build"
 run "npm run build:css"
