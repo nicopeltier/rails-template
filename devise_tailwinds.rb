@@ -29,17 +29,13 @@ PROPSHAFT_VERSION = "1.2.1"
 # 1. Stop Spring to ensure a clean run.
 run "pgrep -f spring | xargs -r kill -9 || true"
 
-# Set npm as the package manager to prevent Yarn usage
-ENV["NODE_PACKAGE_MANAGER"] = "npm"
-
 # 2. Set Ruby version for the project.
-file ".ruby-version", RUBY_VERSION, force: true
+file ".ruby-version", RUBY_VERSION
 
 # 3. Create .railsrc to configure Rails installer options.
 # This must be done at the top to ensure it's available for subsequent commands.
-# 3. Create .railsrc to configure Rails installer options.
-# We skip Hotwire (Turbo/Stimulus) installation because we handle it manually.
-file ".railsrc", "--skip-spring\n--skip-hotwire\n--javascript=npm\n"
+# We skip Hotwire and Importmap because we manage Turbo/Stimulus via npm and esbuild.
+file ".railsrc", "--skip-spring\n--skip-hotwire\n--skip-importmap\n--javascript=npm\n"
 
 # 4. Configure Gemfile for Rails 8, Propshaft, and Bundling.
 def setup_gemfile
@@ -260,16 +256,6 @@ def setup_rails_config
     Rails.application.config.assets.excluded_paths << Rails.root.join("app/assets/stylesheets")
   RUBY
 
-  # Force npm as package manager in Rails configuration
-  initializer "package_manager.rb", <<~RUBY
-    Rails.application.config.generators do |g|
-      g.javascript_engine :esbuild
-    end
-    
-    # Ensure npm is used instead of yarn
-    ENV["NODE_PACKAGE_MANAGER"] = "npm"
-  RUBY
-
   gsub_file "config/environments/production.rb", /#?\s*config\.assets\.compile\s*=.*/, "config.assets.compile = false"
 
   environment <<~RUBY
@@ -327,9 +313,9 @@ def setup_devise
 
   generate("devise:views")
   link_to = '<p>Unhappy? <%= link_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?" }, method: :delete %></p>'
-  button_to = '<div class="flex items-center space-x-2">'
-              '  <span>Unhappy?</span>'
-              '  <%= button_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?" }, method: :delete, class: "text-red-600 hover:text-red-800 underline" %>'
+  button_to = '<div class="d-flex align-items-center">'
+              '  <div>Unhappy?</div>'
+              '  <%= button_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?" }, method: :delete, class: "btn btn-link" %>'
               '</div>'
   gsub_file("app/views/devise/registrations/edit.html.erb", link_to, button_to)
 
@@ -402,9 +388,9 @@ def setup_ui
             HTML
 
   file "app/views/pages/home.html.erb", <<~HTML
-    <div class="container mx-auto text-center py-12">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">Welcome to Your App</h1>
-      <p class="text-lg text-gray-600">This is the home page.</p>
+    <div class="container text-center py-5">
+      <h1>Welcome to Your App</h1>
+      <p>This is the home page.</p>
     </div>
   HTML
 end
@@ -473,7 +459,6 @@ file "package.json", <<~JSON, force: true
       "node": "20.x",
       "npm": "10.x"
     }
-
   }
 JSON
 
@@ -490,8 +475,8 @@ after_bundle do
   # Initialize Git and make the first commit.
   git :init
   git add: "."
-  git commit: %q(-m "Initial commit: Setup Rails 8 with Propshaft, Devise, Tailwind CSS, and JS/CSS bundling")
+  git commit: %q(-m "Initial commit: Setup Rails 8 with Propshaft, Devise, and JS/CSS bundling")
 
   say "\n✅ Template applied successfully!", :green
-  say "🚀 Your new Rails app with Tailwind CSS is ready. Start the server with: bin/dev", :cyan
+  say "🚀 Your new Rails app is ready. Start the server with: bin/dev", :cyan
 end
