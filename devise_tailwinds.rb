@@ -399,8 +399,9 @@ file "package.json", <<~JSON, force: true
 JSON
 
 # 7. Run the final asset build with the correct scripts.
+run "npm install" # Ensure all dependencies are installed
 run "npm run build"
-run "npx tailwindcss -i ./app/assets/stylesheets/application.tailwind.css -o ./app/assets/builds/application.css"
+run "npm run build:css"
 
 after_bundle do
   rails_command "db:create"
