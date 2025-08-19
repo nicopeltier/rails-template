@@ -154,6 +154,11 @@ def setup_node_bundling
     import "@hotwired/turbo-rails"
     import "./controllers"
     import "preline"
+
+    document.addEventListener("turbo:load", () => {
+      window.HSStaticMethods?.autoInit()
+    })
+
   JS
 
   # b. Stimulus application: app/javascript/controllers/application.js
@@ -395,32 +400,32 @@ TXT
 # 6. Forcefully overwrite package.json to ensure correct build scripts.
 # This is the definitive fix that prevents jsbundling-rails from overriding our settings.
 file "package.json", <<~JSON, force: true
-  {
-    "name": "app",
-    "private": true,
-    "dependencies": {
-      "@hotwired/stimulus": "^3.2.2",
-      "@hotwired/turbo-rails": "^8.0.4",
-      "esbuild": "^0.25.9",
-      "preline": "^2.0.0"
-    },
-    "scripts": {
-      "build": "node esbuild.config.js",
-      "build:css": "tailwindcss -i ./app/assets/stylesheets/application.tailwind.css -o ./app/assets/builds/application.css"
-    },
-    "devDependencies": {
-      "tailwindcss": "^3.4.0",
-      "@tailwindcss/forms": "^0.5.7",
-      "@tailwindcss/typography": "^0.5.10",
-      "postcss": "^8.4.35",
-      "postcss-cli": "^11.0.0",
-      "autoprefixer": "^10.4.17"
-    },
-    "engines": {
-      "node": "20.x",
-      "npm": "10.x"
-    }
+{
+  "name": "app",
+  "private": true,
+  "dependencies": {
+    "@hotwired/stimulus": "^3.2.2",
+    "@hotwired/turbo-rails": "^8.0.4",
+    "esbuild": "^0.25.9",
+    "preline": "^3.2.3"
+  },
+  "scripts": {
+    "build": "esbuild app/javascript/application.js --bundle --sourcemap --outdir=app/assets/builds --log-level=error",
+    "build:css": "tailwindcss -i ./app/assets/stylesheets/application.tailwind.css -o ./app/assets/builds/application.css"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.10",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "postcss-cli": "^11.0.0",
+    "tailwindcss": "^3.4.0"
+  },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
   }
+}
 JSON
 
 # 7. Ensure clean npm environment and run builds
