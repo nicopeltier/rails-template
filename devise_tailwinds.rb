@@ -30,7 +30,7 @@ PROPSHAFT_VERSION = "1.2.1"
 run "pgrep -f spring | xargs -r kill -9 || true"
 
 # 2. Set Ruby version for the project.
-file ".ruby-version", RUBY_VERSION
+file ".ruby-version", RUBY_VERSION, force: true
 
 # 3. Create .railsrc to configure Rails installer options.
 # This must be done at the top to ensure it's available for subsequent commands.
