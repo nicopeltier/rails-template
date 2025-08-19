@@ -371,10 +371,6 @@ end
 
 # 1. Setup gems and bundle.
 setup_gemfile
-# Prevent automatic installers from running when bundling jsbundling/cssbundling gems
-ENV['SKIP_IMPORTMAP_INSTALL'] = 'true'
-ENV['SKIP_TURBO_INSTALL'] = 'true'
-ENV['SKIP_STIMULUS_INSTALL'] = 'true'
 run "bundle install"
 
 # 2. Setup Simple Form without Bootstrap.
