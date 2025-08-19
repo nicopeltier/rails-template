@@ -30,12 +30,12 @@ PROPSHAFT_VERSION = "1.2.1"
 run "pgrep -f spring | xargs -r kill -9 || true"
 
 # 2. Set Ruby version for the project.
-file ".ruby-version", RUBY_VERSION, force: true
+file ".ruby-version", RUBY_VERSION
 
 # 3. Create .railsrc to configure Rails installer options.
 # This must be done at the top to ensure it's available for subsequent commands.
 # We skip Hotwire and Importmap because we manage Turbo/Stimulus via npm and esbuild.
-file ".railsrc", "--skip-spring\n--skip-hotwire\n--skip-importmap\n--javascript=npm\n", force: true
+file ".railsrc", "--skip-spring\n--skip-hotwire\n--skip-importmap\n--javascript=npm\n"
 
 # 4. Configure Gemfile for Rails 8, Propshaft, and Bundling.
 def setup_gemfile
@@ -43,7 +43,7 @@ def setup_gemfile
   run "rails db:drop || true"
   # Force npm as the JavaScript installer by creating a package.json file.
   # This makes the bundler installers default to npm instead of yarn.
-  file "package.json", "{}", force: true
+  file "package.json", "{}"
   run "rm -f yarn.lock"
 
   gsub_file "Gemfile", /^ruby .*/, %(ruby "#{RUBY_VERSION}")
@@ -79,7 +79,7 @@ def setup_node_bundling
   run "rm -f .yarnrc*" # Remove any Yarn configuration files
   
   # Explicitly set npm as the package manager
-  file ".npmrc", "package-manager=npm", force: true
+  file ".npmrc", "package-manager=npm"
   
   run "npm init -y" unless File.exist?("package.json")
   # --- Manual Node Asset Setup ---
@@ -95,7 +95,7 @@ def setup_node_bundling
   run "npm install preline"
 
   # 2. Create the PostCSS configuration file.
-  file "postcss.config.js", <<~JS, force: true
+  file "postcss.config.js", <<~JS
     module.exports = {
       plugins: {
         tailwindcss: {},
@@ -105,7 +105,7 @@ def setup_node_bundling
   JS
 
   # 3. Create the esbuild configuration file.
-  file "esbuild.config.js", <<~JS, force: true
+  file "esbuild.config.js", <<~JS
     const path = require('path');
     require('esbuild').build({
       entryPoints: ['application.js'],
@@ -119,7 +119,7 @@ def setup_node_bundling
   JS
 
   # 4. Create Tailwind configuration file.
-  file "tailwind.config.js", <<~JS, force: true
+  file "tailwind.config.js", <<~JS
     module.exports = {
       content: [
         './app/views/**/*.html.erb',
@@ -138,7 +138,7 @@ def setup_node_bundling
   JS
 
   # 5. Create the main stylesheet with Tailwind CSS imports.
-  file "app/assets/stylesheets/application.tailwind.css", <<~CSS, force: true
+  file "app/assets/stylesheets/application.tailwind.css", <<~CSS
     @tailwind base;
     @tailwind components;
     @tailwind utilities;
@@ -149,7 +149,7 @@ def setup_node_bundling
   # avoiding the issues with Rails generators or file injections.
 
   # a. Main entrypoint: app/javascript/application.js
-  file "app/javascript/application.js", <<~JS, force: true
+  file "app/javascript/application.js", <<~JS
     // Entry point for the build script in package.json
     import "@hotwired/turbo-rails"
     import "./controllers"
@@ -162,7 +162,7 @@ def setup_node_bundling
   JS
 
   # b. Stimulus application: app/javascript/controllers/application.js
-  file "app/javascript/controllers/application.js", <<~JS, force: true
+  file "app/javascript/controllers/application.js", <<~JS
     import { Application } from "@hotwired/stimulus"
     const application = Application.start()
 
@@ -174,7 +174,7 @@ def setup_node_bundling
   JS
 
   # c. Stimulus controller loader: app/javascript/controllers/index.js
-  file "app/javascript/controllers/index.js", <<~JS, force: true
+  file "app/javascript/controllers/index.js", <<~JS
     // This file is the entrypoint for all your Stimulus controllers.
     // Import and register your controllers here.
 
@@ -184,7 +184,7 @@ def setup_node_bundling
   JS
 
   # d. Preline Stimulus controller for handling Turbo navigation
-  file "app/javascript/controllers/preline_controller.js", <<~JS, force: true
+  file "app/javascript/controllers/preline_controller.js", <<~JS
 import { Controller } from "@hotwired/stimulus"
 import { HSDropdown, HSCollapse } from "preline"
 
@@ -215,7 +215,7 @@ end
 
 # 5. Configure Propshaft and Rails generators.
 def setup_rails_config
-  initializer "assets.rb", <<~RUBY, force: true
+  initializer "assets.rb", <<~RUBY
     Rails.application.config.assets.version = "1.0"
     Rails.application.config.assets.paths << Rails.root.join("app/assets/builds")
     Rails.application.config.assets.excluded_paths << Rails.root.join("app/javascript")
@@ -305,7 +305,7 @@ def setup_ui
     end
   RUBY
 
-  file "app/views/shared/_flashes.html.erb", <<~ERB, force: true
+  file "app/views/shared/_flashes.html.erb", <<~ERB
     <% if notice %>
       <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative m-3" role="alert">
         <span class="block sm:inline"><%= notice %></span>
@@ -353,7 +353,7 @@ def setup_ui
               </div>
             HTML
 
-  file "app/views/pages/home.html.erb", <<~HTML, force: true
+  file "app/views/pages/home.html.erb", <<~HTML
     <div class="container text-center py-5">
       <h1>Welcome to Your App</h1>
       <p>This is the home page.</p>
