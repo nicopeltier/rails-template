@@ -201,16 +201,6 @@ export default class extends Controller {
     HSCollapse.autoInit()
   }
 
-  // Simple fallback: toggle hidden class on the controlled menu
-  toggle(event) {
-    const btn = event.currentTarget
-    const id = btn.getAttribute("aria-controls")
-    const menu = document.getElementById(id)
-    if (menu) {
-      menu.classList.toggle("hidden")
-    }
-  }
-
 
 }
   JS
