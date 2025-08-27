@@ -189,7 +189,8 @@ end
 # 7) UI — flashes, navbar (remote), home page, elements demo
 def setup_ui
   # Navbar from your repo (Tailwind variant)
-  run "curl -L https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/_navbar_tailwinds_np.html.erb > app/views/shared/_navbar.html.erb"
+run "mkdir -p app/views/shared"
+run %q(curl -fsSL https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/_navbar_tailwinds_np.html.erb -o app/views/shared/_navbar.html.erb || true)
 
   # Tailwind flashes (dismiss via Preline data attributes)
   file "app/views/shared/_flashes.html.erb", <<~ERB
