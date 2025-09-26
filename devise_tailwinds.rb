@@ -256,7 +256,7 @@ end
 
 # 8) Optional admin (Trestle)
 def setup_trestle
-  append_to_file "Gemfile", %q(\n# Admin framework\ngem "trestle"\n) unless File.read("Gemfile").include?('gem "trestle"')
+  append_to_file "Gemfile", "\n# Admin framework\ngem \"trestle\"\n" unless File.read("Gemfile").include?('gem "trestle"')
   run "bundle install"
   generate "trestle:install"
   generate "trestle:resource", "User"
