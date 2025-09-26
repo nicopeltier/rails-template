@@ -1,88 +1,166 @@
-<nav class="bg-white shadow-lg">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between h-16">
+<%# app/views/shared/_navbar.html.erb %>
+<%# Helpers simples %>
+<% initials =
+     (current_user&.email.to_s.split('@').first || "")
+       .split(/[._-]/).first(2)
+       .map { |s| s[0].to_s.upcase }.join.presence || "ME" %>
+
+<nav class="relative bg-white shadow-sm dark:bg-gray-800/50 dark:shadow-none dark:after:pointer-events-none dark:after:absolute dark:after:inset-x-0 dark:after:bottom-0 dark:after:h-px dark:after:bg-white/10">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="flex h-16 justify-between">
       <div class="flex">
-        <div class="flex-shrink-0 flex items-center">
-          <%= link_to "#", class: "flex items-center" do %>
-            <%= image_tag "https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/images/Logo_PC_150.png", class: "h-8 w-auto" %>
+        <!-- Mobile menu button -->
+        <div class="mr-2 -ml-2 flex items-center md:hidden">
+          <button type="button"
+                  command="--toggle"
+                  commandfor="mobile-menu"
+                  class="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:ring-2 focus:ring-indigo-600 focus:outline-hidden focus:ring-inset dark:hover:bg-white/5 dark:hover:text-white dark:focus:ring-white">
+            <span class="absolute -inset-0.5"></span>
+            <span class="sr-only">Open main menu</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" class="size-6 in-aria-expanded:hidden">
+              <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" class="size-6 not-in-aria-expanded:hidden">
+              <path d="M6 18 18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Logo -->
+        <div class="flex shrink-0 items-center">
+          <%= link_to root_path, class: "flex items-center" do %>
+            <img src="https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/images/Logo_PC_150.png" alt="Your Company" class="h-8 w-auto dark:hidden" />
+            <img src="https://raw.githubusercontent.com/nicopeltier/rails-template/refs/heads/master/images/Logo_PC_150.png" alt="Your Company" class="h-8 w-auto not-dark:hidden" />
           <% end %>
         </div>
-        <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-          <% if user_signed_in? %>
-            <%= link_to "Home", "#", class: "border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
-            <%= link_to "Messages", "#", class: "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
-          <% end %>
+
+        <!-- Desktop primary nav -->
+        <div class="hidden md:ml-6 md:flex md:space-x-8">
+          <%# Active helper: met une bordure si la route courante correspond %>
+          <% link_base = "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium" %>
+          <%= link_to "Dashboard", root_path,
+                class: "#{link_base} #{current_page?(root_path) ? 'border-indigo-600 text-gray-900 dark:border-indigo-500 dark:text-white' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-white/20 dark:hover:text-white'}" %>
+          <%= link_to "Team", "#",
+                class: "#{link_base} border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-white/20 dark:hover:text-white" %>
+          <%= link_to "Projects", "#",
+                class: "#{link_base} border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-white/20 dark:hover:text-white" %>
+          <%= link_to "Calendar", "#",
+                class: "#{link_base} border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-white/20 dark:hover:text-white" %>
         </div>
       </div>
-      <div class="hidden sm:ml-6 sm:flex sm:items-center">
-        <% if user_signed_in? %>
-          <div class="hs-dropdown relative inline-flex">
-              <button id="hs-dropdown-with-header" type="button" class="hs-dropdown-toggle bg-white flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-haspopup="menu" aria-expanded="false" aria-label="Dropdown">
+
+      <!-- Right actions -->
+      <div class="flex items-center">
+        <div class="shrink-0">
+          <%= link_to "#",
+                class: "relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:shadow-none dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-500" do %>
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="-ml-0.5 size-5">
+              <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+            </svg>
+            New Job
+          <% end %>
+        </div>
+
+        <div class="hidden md:ml-4 md:flex md:shrink-0 md:items-center">
+          <!-- Bell -->
+          <button type="button"
+                  class="relative rounded-full p-1 text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-indigo-600 dark:hover:text-white dark:focus:outline-indigo-500">
+            <span class="absolute -inset-1.5"></span>
+            <span class="sr-only">View notifications</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" class="size-6">
+              <path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+
+          <!-- Profile dropdown (Elements) -->
+          <el-dropdown class="relative ml-3">
+            <button class="relative flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-500">
+              <span class="absolute -inset-1.5"></span>
               <span class="sr-only">Open user menu</span>
-              <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center">
-                <span class="text-sm font-medium text-white">MC</span>
-              </div>
+              <% if user_signed_in? && current_user.respond_to?(:avatar_url) && current_user.avatar_url.present? %>
+                <img src="<%= current_user.avatar_url %>" alt="" class="size-8 rounded-full bg-gray-100 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:outline-white/10" />
+              <% elsif user_signed_in? %>
+                <div class="size-8 rounded-full bg-gray-900 text-white grid place-items-center text-xs font-semibold outline -outline-offset-1 outline-black/5 dark:outline-white/10"><%= initials %></div>
+              <% else %>
+                <div class="size-8 rounded-full bg-gray-200 grid place-items-center text-xs font-semibold text-gray-700 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:text-white dark:outline-white/10">?</div>
+              <% end %>
             </button>
-            <div id="hs-dropdown-with-header-menu" class="hs-dropdown-menu hidden absolute right-0 z-50 min-w-60 bg-white shadow-md rounded-lg p-2 mt-2" role="menu" aria-orientation="vertical" aria-labelledby="hs-dropdown-with-header">
-               <div class="py-3 px-5 -m-2 bg-gray-100 rounded-t-lg">
-                <p class="text-sm text-gray-500">Connecté en tant que</p>
-                <p class="text-sm font-medium text-gray-800">Mon compte</p>
-              </div>
-              <div class="mt-2 py-2 first:pt-0 last:pb-0">
-                <%= link_to "Action", "#", class: "flex items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm text-gray-800 hover:bg-gray-100 focus:outline-none focus:bg-gray-100" %>
-                <%= link_to "Another action", "#", class: "flex items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm text-gray-800 hover:bg-gray-100 focus:outline-none focus:bg-gray-100" %>
-                <div class="border-t border-gray-200 my-2"></div>
-                <%= link_to "Log out", destroy_user_session_path, data: {turbo_method: :delete}, class: "flex items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:bg-red-50" %>
-              </div>
-            </div>
-          </div>
-        <% else %>
-          <%= link_to "Login", new_user_session_path, class: "text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium" %>
-        <% end %>
-      </div>
-      <div class="-mr-2 flex items-center sm:hidden">
-        <button type="button" class="hs-collapse-toggle bg-white inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" data-hs-collapse="#mobile-menu" aria-controls="mobile-menu" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="sr-only">Open main menu</span>
-          <svg class="hs-collapse-open:hidden block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-          <svg class="hs-collapse-open:block hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+
+            <el-menu anchor="bottom end" popover
+                     class="z-50 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg outline outline-black/5 transition transition-discrete [--anchor-gap:--spacing(2)] data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-200 data-enter:ease-out data-leave:duration-75 data-leave:ease-in dark:bg-gray-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10">
+              <% if user_signed_in? %>
+                <%= link_to "Your profile", (defined?(edit_user_registration_path) ? edit_user_registration_path : "#"),
+                      class: "block px-4 py-2 text-sm text-gray-700 focus:bg-gray-100 focus:outline-hidden dark:text-gray-300 dark:focus:bg:white/5" %>
+                <%= link_to "Settings", "#",
+                      class: "block px-4 py-2 text-sm text-gray-700 focus:bg-gray-100 focus:outline-hidden dark:text-gray-300 dark:focus:bg-white/5" %>
+                <%= link_to "Sign out", destroy_user_session_path,
+                      data: { turbo_method: :delete },
+                      class: "block px-4 py-2 text-sm text-gray-700 focus:bg-gray-100 focus:outline-hidden dark:text-gray-300 dark:focus:bg-white/5" %>
+              <% else %>
+                <%= link_to "Sign in", new_user_session_path,
+                      class: "block px-4 py-2 text-sm text-gray-700 focus:bg-gray-100 focus:outline-hidden dark:text-gray-300 dark:focus:bg-white/5" %>
+              <% end %>
+            </el-menu>
+          </el-dropdown>
+        </div>
       </div>
     </div>
   </div>
 
-  <div id="mobile-menu" class="hs-collapse hidden sm:hidden">
-    <div class="pt-2 pb-3 space-y-1">
-      <% if user_signed_in? %>
-        <%= link_to "Home", "#", class: "bg-indigo-50 border-indigo-500 text-indigo-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium" %>
-        <%= link_to "Messages", "#", class: "border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 block pl-3 pr-4 py-2 border-l-4 text-base font-medium" %>
-      <% end %>
+  <!-- Mobile panel (Elements) -->
+  <el-disclosure id="mobile-menu" hidden class="block md:hidden">
+    <div class="space-y-1 pt-2 pb-3">
+      <%= link_to "Dashboard", root_path,
+            class: "block border-l-4 #{current_page?(root_path) ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-600/10 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-300 dark:hover:border-white/20 dark:hover:bg-white/5 dark:hover:text-white'} py-2 pr-4 pl-3 text-base font-medium sm:pr-6 sm:pl-5" %>
+      <%= link_to "Team", "#",
+            class: "block border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 sm:pr-6 sm:pl-5 py-2 pr-4 pl-3 text-base font-medium dark:text-gray-300 dark:hover:border-white/20 dark:hover:bg:white/5 dark:hover:text-white" %>
+      <%= link_to "Projects", "#",
+            class: "block border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 sm:pr-6 sm:pl-5 py-2 pr-4 pl-3 text-base font-medium dark:text-gray-300 dark:hover:border-white/20 dark:hover:bg:white/5 dark:hover:text-white" %>
+      <%= link_to "Calendar", "#",
+            class: "block border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 sm:pr-6 sm:pl-5 py-2 pr-4 pl-3 text-base font-medium dark:text-gray-300 dark:hover:border-white/20 dark:hover:bg:white/5 dark:hover:text-white" %>
     </div>
-    <div class="pt-4 pb-3 border-t border-gray-200">
-      <% if user_signed_in? %>
-        <div class="flex items-center px-4">
-          <div class="flex-shrink-0">
-            <div class="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center">
-              <span class="text-sm font-medium text-white">MC</span>
-            </div>
-          </div>
-          <div class="ml-3">
-            <div class="text-base font-medium text-gray-800">Mon compte</div>
-          </div>
+    <div class="border-t border-gray-200 pt-4 pb-3 dark:border-white/10">
+      <div class="flex items-center px-4 sm:px-6">
+        <div class="shrink-0">
+          <% if user_signed_in? && current_user.respond_to?(:avatar_url) && current_user.avatar_url.present? %>
+            <img src="<%= current_user.avatar_url %>" alt="" class="size-10 rounded-full bg-gray-100 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:outline-white/10" />
+          <% else %>
+            <div class="size-10 rounded-full bg-gray-200 grid place-items-center text-sm font-semibold text-gray-700 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:text-white dark:outline-white/10"><%= initials %></div>
+          <% end %>
         </div>
-        <div class="mt-3 space-y-1">
-          <%= link_to "Action", "#", class: "block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100" %>
-          <%= link_to "Another action", "#", class: "block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100" %>
-          <%= link_to "Log out", destroy_user_session_path, data: {turbo_method: :delete}, class: "block px-4 py-2 text-base font-medium text-red-600 hover:text-red-800 hover:bg-red-50" %>
+        <div class="ml-3">
+          <% if user_signed_in? %>
+            <div class="text-base font-medium text-gray-800 dark:text-white"><%= current_user.email %></div>
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Signed in</div>
+          <% else %>
+            <div class="text-base font-medium text-gray-800 dark:text-white">Guest</div>
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Not signed in</div>
+          <% end %>
         </div>
-      <% else %>
-        <div class="px-4">
-          <%= link_to "Login", new_user_session_path, class: "block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100" %>
-        </div>
-      <% end %>
+        <button type="button"
+                class="relative ml-auto shrink-0 rounded-full p-1 text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-indigo-600 dark:hover:text-white dark:focus:outline-indigo-500">
+          <span class="absolute -inset-1.5"></span>
+          <span class="sr-only">View notifications</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" class="size-6">
+            <path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="mt-3 space-y-1">
+        <% if user_signed_in? %>
+          <%= link_to "Your profile", (defined?(edit_user_registration_path) ? edit_user_registration_path : "#"),
+                class: "block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white" %>
+          <%= link_to "Settings", "#",
+                class: "block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text:white" %>
+          <%= link_to "Sign out", destroy_user_session_path,
+                data: { turbo_method: :delete },
+                class: "block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg:white/5 dark:hover:text-white" %>
+        <% else %>
+          <%= link_to "Sign in", new_user_session_path,
+                class: "block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white" %>
+        <% end %>
+      </div>
     </div>
-  </div>
+  </el-disclosure>
 </nav>

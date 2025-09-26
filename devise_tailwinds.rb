@@ -218,6 +218,18 @@ run %q(curl -fsSL https://raw.githubusercontent.com/nicopeltier/rails-template/r
     gsub_file layout_path, /<body[^>]*>/, "\\0\n    <%= render \"shared/flashes\" %>\n    <%= render \"shared/navbar\" %>"
   end
 
+  inject_into_file "app/views/layouts/application.html.erb", after: " <%= yield :head %>\n" do
+    <<~HTML
+       <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+      <%= render "shared/navbar" %>
+    HTML
+  end
+
+
+
+
+
+
   # Root page
   generate :controller, "pages", "home"
   route 'root to: "pages#home"'
@@ -252,16 +264,17 @@ end
 
 # ---- Execute all steps ----
 setup_gemfile
-run "bundle install"
+
 
 # Simple Form (Tailwind wrappers)
 generate "simple_form:install", "--tailwind" unless File.exist?("config/initializers/simple_form_tailwind.rb")
 
 setup_node_bundling
+run "bundle install"
 setup_rails_config
 setup_devise
 setup_ui
-# setup_trestle   # uncomment if you want the admin scaffold
+setup_trestle   # uncomment if you want the admin scaffold
 
 # Lock Linux platform for Heroku cache consistency; .env; .gitignore
 run "bundle lock --add-platform x86_64-linux"
