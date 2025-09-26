@@ -251,17 +251,19 @@ def setup_trestle
   generate "trestle:resource", "User"
 end
 
-# Layout: inject flashes + navbar after <body>
+# 9) Layout setup - inject flashes + navbar + JS
+def setup_layout
   layout_path = "app/views/layouts/application.html.erb"
   if File.exist?(layout_path) && !File.read(layout_path).include?('render "shared/flashes"')
     gsub_file layout_path, /<body[^>]*>/, "\\0\n    <%= render \"shared/flashes\" %>\n    <%= render \"shared/navbar\" %>"
   end
 
-  inject_into_file "app/views/layouts/application.html.erb", after: "<%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>\n" do
+  inject_into_file "app/views/layouts/application.html.erb", after: %(<%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>\n) do
     <<~HTML
       <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
     HTML
   end
+end
 
 # ---- Execute all steps ----
 setup_gemfile
@@ -275,6 +277,7 @@ run "bundle install"
 setup_rails_config
 setup_devise
 setup_ui
+setup_layout
 setup_trestle   # uncomment if you want the admin scaffold
 
 # Lock Linux platform for Heroku cache consistency; .env; .gitignore
