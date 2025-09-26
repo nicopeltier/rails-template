@@ -301,6 +301,7 @@ setup_layout
 
 # Install Trestle gem (but don't generate resources yet - wait for after_bundle)
 append_to_file "Gemfile", "\n# Admin framework\ngem \"trestle\"\n" unless File.read("Gemfile").include?('gem "trestle"')
+run "bundle install --quiet"
 
 # Lock Linux platform for Heroku cache consistency; .env; .gitignore
 run "bundle lock --add-platform x86_64-linux"
@@ -321,6 +322,11 @@ run "npm run build:css"
 after_bundle do
   # Create database and run migrations only after everything is set up
   rails_command "db:create"
+
+  # Debug: show what migrations we have
+  say "Available migrations:", :blue
+  Dir.glob("db/migrate/*.rb").each { |f| say "  #{File.basename(f)}", :yellow }
+
   rails_command "db:migrate"
 
   # Now that User table exists, safe to generate Trestle resources
