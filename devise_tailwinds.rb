@@ -218,12 +218,7 @@ run %q(curl -fsSL https://raw.githubusercontent.com/nicopeltier/rails-template/r
     gsub_file layout_path, /<body[^>]*>/, "\\0\n    <%= render \"shared/flashes\" %>\n    <%= render \"shared/navbar\" %>"
   end
 
-  inject_into_file "app/views/layouts/application.html.erb", after: " <%= yield :head %>\n" do
-    <<~HTML
-       <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
-      <%= render "shared/navbar" %>
-    HTML
-  end
+
 
 
 
