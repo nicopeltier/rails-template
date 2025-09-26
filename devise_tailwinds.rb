@@ -26,11 +26,8 @@ PROPSHAFT_VERSION = "1.2.1"
 run "pgrep -f spring | xargs -r kill -9 || true"
 
 # 2) Pin Ruby for this project
-if File.exist?(".ruby-version")
-  gsub_file ".ruby-version", /.*/, RUBY_VERSION
-else
-  file ".ruby-version", RUBY_VERSION
-end
+remove_file ".ruby-version", force: true
+file ".ruby-version", RUBY_VERSION
 
 # 3) Gemfile setup — Rails, Propshaft, Devise, bundling gems
 def setup_gemfile
