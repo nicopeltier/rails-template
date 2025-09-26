@@ -243,15 +243,8 @@ run %q(curl -fsSL https://raw.githubusercontent.com/nicopeltier/rails-template/r
   ERB
 end
 
-# 8) Optional admin (Trestle)
-def setup_trestle
-  append_to_file "Gemfile", "\n# Admin framework\ngem \"trestle\"\n" unless File.read("Gemfile").include?('gem "trestle"')
-  run "bundle install"
-  generate "trestle:install"
-  generate "trestle:resource", "User"
-end
 
-# 9) Layout setup - inject flashes + navbar + JS
+# 8) Layout setup - inject flashes + navbar + JS
 def setup_layout
   layout_path = "app/views/layouts/application.html.erb"
   if File.exist?(layout_path) && !File.read(layout_path).include?('render "shared/flashes"')
@@ -276,9 +269,19 @@ setup_node_bundling
 run "bundle install"
 setup_rails_config
 setup_devise
+
+# DB setup - Execute migrations immediately after Devise setup
+rails_command "db:create"
+rails_command "db:migrate"
+
 setup_ui
 setup_layout
-setup_trestle   # uncomment if you want the admin scaffold
+
+# Install Trestle gem and setup admin
+append_to_file "Gemfile", "\n# Admin framework\ngem \"trestle\"\n" unless File.read("Gemfile").include?('gem "trestle"')
+run "bundle install"
+generate "trestle:install"
+generate "trestle:resource", "User"  # Now User table exists, safe to generate Trestle resource
 
 # Lock Linux platform for Heroku cache consistency; .env; .gitignore
 run "bundle lock --add-platform x86_64-linux"
@@ -294,10 +297,6 @@ run "mkdir -p app/assets/builds && touch app/assets/builds/.keep"
 # Build assets once (useful locally, Heroku will run precompile)
 run "npm run build"
 run "npm run build:css"
-
-# DB setup
-rails_command "db:create"
-rails_command "db:migrate"
 
 # Initial commit
 after_bundle do
