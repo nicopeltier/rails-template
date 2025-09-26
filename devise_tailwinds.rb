@@ -26,7 +26,11 @@ PROPSHAFT_VERSION = "1.2.1"
 run "pgrep -f spring | xargs -r kill -9 || true"
 
 # 2) Pin Ruby for this project
-file ".ruby-version", RUBY_VERSION
+if File.exist?(".ruby-version")
+  gsub_file ".ruby-version", /.*/, RUBY_VERSION
+else
+  file ".ruby-version", RUBY_VERSION
+end
 
 # 3) Gemfile setup — Rails, Propshaft, Devise, bundling gems
 def setup_gemfile
@@ -145,12 +149,22 @@ end
 
 # 5) Propshaft + production config
 def setup_rails_config
-  initializer "assets.rb", <<~RUBY
+  # Check if assets.rb already exists and update it, otherwise create it
+  assets_initializer_path = "config/initializers/assets.rb"
+  assets_config = <<~RUBY
     Rails.application.config.assets.version = "1.0"
     Rails.application.config.assets.paths << Rails.root.join("app/assets/builds")
     Rails.application.config.assets.excluded_paths << Rails.root.join("app/javascript")
     Rails.application.config.assets.excluded_paths << Rails.root.join("app/assets/stylesheets")
   RUBY
+
+  if File.exist?(assets_initializer_path)
+    # Append our config to existing file
+    append_to_file assets_initializer_path, "\n" + assets_config
+  else
+    # Create new file
+    initializer "assets.rb", assets_config
+  end
 
   gsub_file "config/environments/production.rb",
             /#?\s*config\.assets\.compile\s*=.*/,
@@ -283,24 +297,13 @@ run "bundle install --quiet"
 setup_rails_config
 setup_devise
 
-# DB setup - Execute migrations immediately after Devise setup
-rails_command "db:create"
-
-# Check if we have any migrations to run before attempting
-if Dir.glob("db/migrate/*.rb").any?
-  rails_command "db:migrate"
-else
-  say "No migrations found to run", :yellow
-end
+# Don't create/migrate database yet - wait until after_bundle
 
 setup_ui
 setup_layout
 
-# Install Trestle gem and setup admin
+# Install Trestle gem (but don't generate resources yet - wait for after_bundle)
 append_to_file "Gemfile", "\n# Admin framework\ngem \"trestle\"\n" unless File.read("Gemfile").include?('gem "trestle"')
-run "bundle install --quiet"
-generate "trestle:install", "--quiet"
-generate "trestle:resource", "User", "--quiet"  # Now User table exists, safe to generate Trestle resource
 
 # Lock Linux platform for Heroku cache consistency; .env; .gitignore
 run "bundle lock --add-platform x86_64-linux"
@@ -319,9 +322,14 @@ run "npm run build:css"
 
 # Initial commit
 after_bundle do
-  # Ensure migrations are run after bundle
+  # Create database and run migrations only after everything is set up
+  rails_command "db:create"
   rails_command "db:migrate"
-  
+
+  # Now that User table exists, safe to generate Trestle resources
+  generate "trestle:install", "--quiet"
+  generate "trestle:resource", "User", "--quiet"
+
   git :init
   git add: "."
   git commit: %q(-m "Initial commit: Rails 8.0.2 + Propshaft 1.2.1 + Tailwind v4 (PostCSS) + Devise + Elements")
