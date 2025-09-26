@@ -194,10 +194,10 @@ def setup_devise
     gsub_file mig, /create_table :users do/, 'create_table :users, if_not_exists: true do'
 
     # Replace add_index with conditional checks for PostgreSQL compatibility
-    gsub_file mig, /add_index :users, :email, unique: true\b/,
-      'add_index :users, :email, unique: true unless index_exists?(:users, :email)'
-    gsub_file mig, /add_index :users, :reset_password_token, unique: true\b/,
-      'add_index :users, :reset_password_token, unique: true unless index_exists?(:users, :reset_password_token)'
+    gsub_file mig, /add_index :users, :email,(\s+)unique: true/,
+      'add_index :users, :email,\1unique: true unless index_exists?(:users, :email)'
+    gsub_file mig, /add_index :users, :reset_password_token,(\s+)unique: true/,
+      'add_index :users, :reset_password_token,\1unique: true unless index_exists?(:users, :reset_password_token)'
   end
 
   environment 'config.action_mailer.default_url_options = { host: "localhost", port: 3000 }', env: "development"
