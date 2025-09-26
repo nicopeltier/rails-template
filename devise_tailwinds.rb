@@ -168,8 +168,17 @@ end
 # 6) Devise (ensured + idempotent)
 def setup_devise
   generate "devise:install" unless File.exist?("config/initializers/devise.rb")
-  generate "devise", "User" unless File.exist?("app/models/user.rb") || Dir.glob("db/migrate/*_devise_create_users.rb").first
+  
+  # Check if User model or migration already exists
+  user_model_exists = File.exist?("app/models/user.rb")
+  existing_migration = Dir.glob("db/migrate/*_devise_create_users.rb").first
+  
+  # Only generate if neither exists
+  unless user_model_exists || existing_migration
+    generate "devise", "User"
+  end
 
+  # If we have a migration (new or existing), make it idempotent
   if (mig = Dir.glob("db/migrate/*_devise_create_users.rb").first)
     gsub_file mig, /create_table :users do/, 'create_table :users, if_not_exists: true do'
     gsub_file mig, /add_index :users, :email, unique: true\b/, 'add_index :users, :email, unique: true, if_not_exists: true'
@@ -272,7 +281,13 @@ setup_devise
 
 # DB setup - Execute migrations immediately after Devise setup
 rails_command "db:create"
-rails_command "db:migrate"
+
+# Check if we have any migrations to run before attempting
+if Dir.glob("db/migrate/*.rb").any?
+  rails_command "db:migrate"
+else
+  say "No migrations found to run", :yellow
+end
 
 setup_ui
 setup_layout
