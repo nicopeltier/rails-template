@@ -212,12 +212,6 @@ run %q(curl -fsSL https://raw.githubusercontent.com/nicopeltier/rails-template/r
     <% end %>
   ERB
 
-  # Layout: inject flashes + navbar after <body>
-  layout_path = "app/views/layouts/application.html.erb"
-  if File.exist?(layout_path) && !File.read(layout_path).include?('render "shared/flashes"')
-    gsub_file layout_path, /<body[^>]*>/, "\\0\n    <%= render \"shared/flashes\" %>\n    <%= render \"shared/navbar\" %>"
-  end
-
 
 
 
@@ -257,6 +251,18 @@ def setup_trestle
   generate "trestle:resource", "User"
 end
 
+# Layout: inject flashes + navbar after <body>
+  layout_path = "app/views/layouts/application.html.erb"
+  if File.exist?(layout_path) && !File.read(layout_path).include?('render "shared/flashes"')
+    gsub_file layout_path, /<body[^>]*>/, "\\0\n    <%= render \"shared/flashes\" %>\n    <%= render \"shared/navbar\" %>"
+  end
+
+  inject_into_file "app/views/layouts/application.html.erb", after: "<%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>\n" do
+    <<~HTML
+      <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+    HTML
+  end
+
 # ---- Execute all steps ----
 setup_gemfile
 
@@ -292,6 +298,9 @@ rails_command "db:migrate"
 
 # Initial commit
 after_bundle do
+  # Ensure migrations are run after bundle
+  rails_command "db:migrate"
+  
   git :init
   git add: "."
   git commit: %q(-m "Initial commit: Rails 8.0.2 + Propshaft 1.2.1 + Tailwind v4 (PostCSS) + Devise + Elements")
