@@ -66,10 +66,10 @@ def setup_node_bundling
   run "rm -rf .yarn .pnp.cjs .pnp.loader.mjs"
 
   # Install runtime deps (Turbo/Stimulus, Preline, Elements)
-  run "npm install @hotwired/turbo-rails @hotwired/stimulus preline @tailwindplus/elements"
+  run "npm install --yes @hotwired/turbo-rails @hotwired/stimulus preline @tailwindplus/elements"
 
   # Install dev deps (esbuild + PostCSS pipeline with Tailwind v4)
-  run "npm install --save-dev esbuild postcss postcss-cli tailwindcss @tailwindcss/postcss autoprefixer"
+  run "npm install --yes --save-dev esbuild postcss postcss-cli tailwindcss @tailwindcss/postcss autoprefixer"
 
   # PostCSS config — Tailwind v4 plugin
   file "postcss.config.js", <<~JS
@@ -167,7 +167,7 @@ end
 
 # 6) Devise (ensured + idempotent)
 def setup_devise
-  generate "devise:install" unless File.exist?("config/initializers/devise.rb")
+  generate "devise:install", "--quiet" unless File.exist?("config/initializers/devise.rb")
   
   # Check if User model or migration already exists
   user_model_exists = File.exist?("app/models/user.rb")
@@ -175,14 +175,18 @@ def setup_devise
   
   # Only generate if neither exists
   unless user_model_exists || existing_migration
-    generate "devise", "User"
+    generate "devise", "User", "--quiet"
   end
 
   # If we have a migration (new or existing), make it idempotent
   if (mig = Dir.glob("db/migrate/*_devise_create_users.rb").first)
     gsub_file mig, /create_table :users do/, 'create_table :users, if_not_exists: true do'
-    gsub_file mig, /add_index :users, :email, unique: true\b/, 'add_index :users, :email, unique: true, if_not_exists: true'
-    gsub_file mig, /add_index :users, :reset_password_token, unique: true\b/, 'add_index :users, :reset_password_token, unique: true, if_not_exists: true'
+
+    # Replace add_index with conditional checks for PostgreSQL compatibility
+    gsub_file mig, /add_index :users, :email, unique: true\b/,
+      'add_index :users, :email, unique: true unless index_exists?(:users, :email)'
+    gsub_file mig, /add_index :users, :reset_password_token, unique: true\b/,
+      'add_index :users, :reset_password_token, unique: true unless index_exists?(:users, :reset_password_token)'
   end
 
   environment 'config.action_mailer.default_url_options = { host: "localhost", port: 3000 }', env: "development"
@@ -229,7 +233,7 @@ run %q(curl -fsSL https://raw.githubusercontent.com/nicopeltier/rails-template/r
 
 
   # Root page
-  generate :controller, "pages", "home"
+  generate :controller, "pages", "home", "--quiet"
   route 'root to: "pages#home"'
 
   # Elements demo partial + include on home
@@ -272,10 +276,10 @@ setup_gemfile
 
 
 # Simple Form (Tailwind wrappers)
-generate "simple_form:install", "--tailwind" unless File.exist?("config/initializers/simple_form_tailwind.rb")
+generate "simple_form:install", "--tailwind", "--quiet" unless File.exist?("config/initializers/simple_form_tailwind.rb")
 
 setup_node_bundling
-run "bundle install"
+run "bundle install --quiet"
 setup_rails_config
 setup_devise
 
@@ -294,9 +298,9 @@ setup_layout
 
 # Install Trestle gem and setup admin
 append_to_file "Gemfile", "\n# Admin framework\ngem \"trestle\"\n" unless File.read("Gemfile").include?('gem "trestle"')
-run "bundle install"
-generate "trestle:install"
-generate "trestle:resource", "User"  # Now User table exists, safe to generate Trestle resource
+run "bundle install --quiet"
+generate "trestle:install", "--quiet"
+generate "trestle:resource", "User", "--quiet"  # Now User table exists, safe to generate Trestle resource
 
 # Lock Linux platform for Heroku cache consistency; .env; .gitignore
 run "bundle lock --add-platform x86_64-linux"
